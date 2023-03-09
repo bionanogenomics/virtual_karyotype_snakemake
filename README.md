@@ -85,13 +85,13 @@ Each SV is described by 7 values: (sv_type, acceptor chromosome, donor chromosom
 * breakpoint2 End of the deletion (exclusive)
 * size: Ignored, inferred from the breakpoints: breakpoint2 - breakpoint1 - 1
 * orientation: Ignored, always \+
- 
+
 ### insertions: ###
 * breakpoint1: Position immediately before the insertion (exclusive)
 * breakpoint2: Position immediately after the insertion (exclusive): breakpoint1 + 1.
 * size: The size of the insertion.
 * ignored, always \+
- 
+
 ### translocations: ###
 * breakpoint1: Position in in the acceptor chromosome before the inserted material (exclusive)
 * breakpoint2: Position in the donor chromosome before the the region translocated starts (exclusive)
