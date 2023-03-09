@@ -118,7 +118,7 @@ Each SV is described by 7 values: (sv_type, acceptor chromosome, donor chromosom
 **Example simulation format tsv**
 ----
  
-| Type                   | chrom1 | chrom2 | breakpoint1 | breakpoint2 | SVsize  | Orientation  |
+  Type                   | chrom1 | chrom2 | breakpoint1 | breakpoint2 | SVsize  | Orientation  |
 | ---------------------- | ------ | ------ | ----------- | ----------- | ------- | ------------ |
 | translocation_intrachr | 1      | 1      | 3589895     | 100327530   | 38580   | \+           |
 | duplication            | 1      | 1      | 5250493     | 5027224     | 63322   | \+           |
