@@ -84,20 +84,21 @@ Each SV is described by 7 values: (sv_type, acceptor chromosome, donor chromosom
 * breakpoint1: Start of the deletion (exclusive)
 * breakpoint2 End of the deletion (exclusive)
 * size: Ignored, inferred from the breakpoints: breakpoint2 - breakpoint1 - 1
-* orientation: Ignored, always +
+* orientation: Ignored, always "+"
  
 ### insertions: ###
 * breakpoint1: Position immediately before the insertion (exclusive)
 * breakpoint2: Position immediately after the insertion (exclusive): breakpoint1 + 1.
 * size: The size of the insertion.
-* ignored, always +
+* ignored, always "+"
  
 ### translocations: ###
 * breakpoint1: Position in in the acceptor chromosome before the inserted material (exclusive)
 * breakpoint2: Position in the donor chromosome before the the region translocated starts (exclusive)
 * size: The size of the region to 'cut' from the donor
-* Orientation: If +, the translocated region is kept as is. If -, the translocated region is inverted before it is inserted in the acceptor position
- 
+* Orientation: If +, the translocated region is kept as is. If -, the translocated region is inverted before 
+  it is inserted in the acceptor position
+
 ### inversions: ###
 * breakpoint1: Start of the inversion (exclusive)
 * breakpoint2: End of the inversion (exclusive)
@@ -110,23 +111,25 @@ Each SV is described by 7 values: (sv_type, acceptor chromosome, donor chromosom
 * breakpoint2: Position in in the donor chromosome where the duplicated region starts (exclusive)
 * size: Size of the duplicated material.
 * Orientation: If +, the region is attached as is. If -, the region attached is inverted first
-* An example of tandem duplication of the region of 500bp chr1:1501-2000, added after position 2200: (1,1, 2200, 1500, 500, +)
+* An example of tandem duplication of the region of 500bp chr1:1501-2000, added after position 2200: 
+  (1,1, 2200, 1500, 500, \+)
 ----
 **Example simulation format tsv**
+----
  
-| Type                   | chrom1 | chrom2 | breakpoint1 | breakpoint2 | SVsize  | Orientation |
-| ---------------------- | ------ | ------ | ----------- | ----------- | ------- | ----------- |
-| translocation_intrachr | 1      | 1      | 3589895     | 100327530   | 38580   | +           |
-| duplication            | 1      | 1      | 5250493     | 5027224     | 63322   | +           |
-| deletion               | 1      | 1      | 6682383     | 6756792     | 74408   | +           |
-| inversion              | 1      | 1      | 7337996     | 7692969     | 354972  | +           |
-| inversion              | 1      | 1      | 9342890     | 9387508     | 44617   | +           |
-| translocation_interchr | 1      | 10     | 11237335    | 11520342    | 601140  | +           |
-| duplication            | 1      | 1      | 11431505    | 11167103    | 29346   | +           |
-| translocation_interchr | 1      | 15     | 12487567    | 94782974    | 25164   | +           |
-| translocation_intrachr | 1      | 1      | 14967516    | 205431294   | 2617192 | +           |
-| duplication            | 1      | 1      | 15412855    | 15133990    | 231539  | +           |
-| insertion              | 1      | 1      | 15708791    | 15708792    | 617472  | +           |
+| Type                   | chrom1 | chrom2 | breakpoint1 | breakpoint2 | SVsize  | Orientation  |
+| ---------------------- | ------ | ------ | ----------- | ----------- | ------- | ------------ |
+| translocation_intrachr | 1      | 1      | 3589895     | 100327530   | 38580   | \+           |
+| duplication            | 1      | 1      | 5250493     | 5027224     | 63322   | \+           |
+| deletion               | 1      | 1      | 6682383     | 6756792     | 74408   | \+           |
+| inversion              | 1      | 1      | 7337996     | 7692969     | 354972  | \+           |
+| inversion              | 1      | 1      | 9342890     | 9387508     | 44617   | \+           |
+| translocation_interchr | 1      | 10     | 11237335    | 11520342    | 601140  | \+           |
+| duplication            | 1      | 1      | 11431505    | 11167103    | 29346   | \+           |
+| translocation_interchr | 1      | 15     | 12487567    | 94782974    | 25164   | \+           |
+| translocation_intrachr | 1      | 1      | 14967516    | 205431294   | 2617192 | \+           |
+| duplication            | 1      | 1      | 15412855    | 15133990    | 231539  | \+           |
+| insertion              | 1      | 1      | 15708791    | 15708792    | 617472  | \+           |
 
 --------
 ## Possible types of simulated structural variants
