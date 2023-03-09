@@ -1,0 +1,45 @@
+#####################################################
+# Reapeatabiligy and Precision workflow config file #
+#####################################################
+
+centro:
+  resources/hg38_centro.txt
+
+cytoband:
+  resources/cytoBand.txt
+
+resolved_cytoband:
+  resources/hg38_400_level_cytoband_updated.tsv
+
+aws_access_key_id:
+  AKIA52DICWU3K52VN56N
+
+aws_secret_access_key:
+  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
+  
+aws_region:
+  us-east-1
+
+ref:
+  /home/users3/apang/human/reference/HG_build_20/dle_chrmerge/chrom_length_only.txt
+
+geo_hash:
+  /home/users3/apang/Pipeline/molecule_mapping/020918/geometric_hashing/trunk/cluster_ins_dup_del_inv_trans_geometric_hashing_minimal.pl
+
+n_cytobands:
+  2
+
+geometric_hash:
+  /home/users3/apang/Pipeline/molecule_mapping/020918/geometric_hashing/trunk/cluster_ins_dup_del_inv_trans_geometric_hashing_minimal.pl
+
+window:
+  1000000
+
+window_translocations:
+  10000000
+
+sunnyside:
+  sunnyside-bionanoaccess-com
+
+keyhole:
+  keyhole-bionanoaccess-com
