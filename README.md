@@ -118,19 +118,19 @@ Each SV is described by 7 values: (sv_type, acceptor chromosome, donor chromosom
 **Example simulation format tsv**
 ----
  
-  Type                   | chrom1 | chrom2 | breakpoint1 | breakpoint2 | SVsize  | Orientation  
------------------------- | ------ | ------ | ----------- | ----------- | ------- | ------------ 
-  translocation_intrachr | 1      | 1      | 3589895     | 100327530   | 38580   | \+           
-  duplication            | 1      | 1      | 5250493     | 5027224     | 63322   | \+           
-  deletion               | 1      | 1      | 6682383     | 6756792     | 74408   | \+           
-  inversion              | 1      | 1      | 7337996     | 7692969     | 354972  | \+           
-  inversion              | 1      | 1      | 9342890     | 9387508     | 44617   | \+           
-  translocation_interchr | 1      | 10     | 11237335    | 11520342    | 601140  | \+           
-  duplication            | 1      | 1      | 11431505    | 11167103    | 29346   | \+           
-  translocation_interchr | 1      | 15     | 12487567    | 94782974    | 25164   | \+           
-  translocation_intrachr | 1      | 1      | 14967516    | 205431294   | 2617192 | \+           
-  duplication            | 1      | 1      | 15412855    | 15133990    | 231539  | \+           
-  insertion              | 1      | 1      | 15708791    | 15708792    | 617472  | \+           
+Type                   | chrom1 | chrom2 | breakpoint1 | breakpoint2 | SVsize  | Orientation
+---------------------- | ------ | ------ | ----------- | ----------- | ------- | ------------
+translocation_intrachr | 1      | 1      | 3589895     | 100327530   | 38580   | \+
+duplication            | 1      | 1      | 5250493     | 5027224     | 63322   | \+
+deletion               | 1      | 1      | 6682383     | 6756792     | 74408   | \+
+inversion              | 1      | 1      | 7337996     | 7692969     | 354972  | \+
+inversion              | 1      | 1      | 9342890     | 9387508     | 44617   | \+
+translocation_interchr | 1      | 10     | 11237335    | 11520342    | 601140  | \+
+duplication            | 1      | 1      | 11431505    | 11167103    | 29346   | \+
+translocation_interchr | 1      | 15     | 12487567    | 94782974    | 25164   | \+
+translocation_intrachr | 1      | 1      | 14967516    | 205431294   | 2617192 | \+
+duplication            | 1      | 1      | 15412855    | 15133990    | 231539  | \+
+insertion              | 1      | 1      | 15708791    | 15708792    | 617472  | \+
 
 --------
 ## Possible types of simulated structural variants
