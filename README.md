@@ -84,13 +84,13 @@ Each SV is described by 7 values: (sv_type, acceptor chromosome, donor chromosom
 * breakpoint1: Start of the deletion (exclusive)
 * breakpoint2 End of the deletion (exclusive)
 * size: Ignored, inferred from the breakpoints: breakpoint2 - breakpoint1 - 1
-* orientation: Ignored, always "+"
+* orientation: Ignored, always \+
  
 ### insertions: ###
 * breakpoint1: Position immediately before the insertion (exclusive)
 * breakpoint2: Position immediately after the insertion (exclusive): breakpoint1 + 1.
 * size: The size of the insertion.
-* ignored, always "+"
+* ignored, always \+
  
 ### translocations: ###
 * breakpoint1: Position in in the acceptor chromosome before the inserted material (exclusive)
@@ -113,6 +113,7 @@ Each SV is described by 7 values: (sv_type, acceptor chromosome, donor chromosom
 * Orientation: If +, the region is attached as is. If -, the region attached is inverted first
 * An example of tandem duplication of the region of 500bp chr1:1501-2000, added after position 2200: 
   (1,1, 2200, 1500, 500, \+)
+
 ----
 **Example simulation format tsv**
 ----
