@@ -62,10 +62,21 @@ python3 -m pip install ./lohdetectiony
 
 **Install svconfmodels**
 ```
-###TODO check to see if it is appropriate to install this into bionano environment
+conda activate bionano_python3.0
 git clone --branch develop git@bitbucket.org:biodiscovery/svconfmodels.git
 cd svconfmodels
 pip install .
+```
+
+**Install MolSim R Package from sv_simulation repository**
+```
+conda activate bionano_python3.0
+git clone --branch develop git@bitbucket.org:biodiscovery/sv_simulation.git
+cd sv_simulation/SingleMoleculeSimulator
+R
+install.packages("ghyp")
+q()
+R CMD INSTALL --no-multiarch --with-keep.source MolSim
 ```
 
 ***Installing into isolated environments is best practice in order to avoid compiler conflicts with non-dependent packages.***

@@ -16,86 +16,64 @@ for dir in dirs:
         print(log_out)
 print("Finished!")
 
+SAMPLES = [1]
 
 rule all:
     input:  
-        expand("vk_results/{sample}/{sample}_results_ISCN.txt", sample=SAMPLES),
+        expand("samples/{sample}/molecules/task_complete.tsv", sample=SAMPLES),
 
-rule run_vk:
+rule select_svs:
     input:
-        cnv="input/{sample}/contigs/alignmolvref/copynumber/cnv_calls_exp.txt",
-        smap="input/{sample}/contigs/exp_refineFinal1_sv/merged_smaps/exp_refineFinal1_merged_filter_inversions.smap",
-        rcmap="input/{sample}/contigs/alignmolvref/copynumber/cnv_rcmap_exp.txt",
-        xmap="input/{sample}/contigs/annotation/exp_refineFinal1_merged.xmap"
+        "input/hg19_random_svs_2.txt",
     log:
-        "logs/scripts/run_vk_{sample}.log"
+        "logs/scripts/select_svs_{sample}.log"
     params:
-        out_dir = lambda w: "vk_results/{sample}".format(sample=w.sample),
-        centro = config['centro'],
-        cyto = config['cytoband']
-    conda:
-        "envs/vk_env.yaml"
+        out_dir = lambda w: "samples/{sample}".format(sample=w.sample),
     output:
-        "vk_results/{sample}/{sample}_results.png",
-        "vk_results/{sample}/{sample}_results.txt",
-        "vk_results/{sample}/{sample}_results_ISCN.txt"
+        "samples/{sample}/{sample}_sv_truth_set.tsv"
     shell:
         """
-        python main.py --cnv {input.cnv} --smap {input.smap} --rcmap {input.rcmap} --xmap {input.xmap} --centro {params.centro} --cyto {params.cyto} -n {wildcards.sample}_results -o {params.out_dir} &> {log}
+        mkdir -p {params.out_dir}
+        python scripts/sv_selector.py --input {input[0]} --output {output[0]} &> {log}
         """
 
-rule generate_plotting_parameter_files:
+rule generate_cmap:
     input:
-        "vk_results/{sample}/{sample}_results_ISCN.txt"
+        "samples/{sample}/{sample}_sv_truth_set.tsv"
     log:
-        "logs/scripts/generate_plotting_parameter_files_{sample}.log"
-    conda:
-        "envs/vk_env.yaml"
+        "logs/scripts/generat_cmap_{sample}.log"
     params:
-        cyto = config['resolved_cytoband']
+        reference_cmap = config['reference_cmap'],
+        bngomodel = config['bngomodel']
     output:
-        cytoband_out = "vk_results/{sample}/{sample}_custom_cytobands.txt",
-        genome = "vk_results/{sample}/{sample}_custom_genome.txt",
-        orientation = "vk_results/{sample}/{sample}_contig_orientation.txt",
-        kprect = "vk_results/{sample}/{sample}_kprect_parameters.txt"
+        "samples/{sample}/{sample}_simulation.cmap",
     shell:
         """
-        python scripts/format_results.py --iscn_format {input} --cytoband {params.cyto} --cytobands_out {output.cytoband_out} --genome_out {output.genome} --contig_orientation_out {output.orientation} --kprect_out {output.kprect} &> {log}
-        """
+        bash -c '
+            . $HOME/.bashrc # if not loaded automatically
+            conda activate bionano_python3.0
+            {params.bngomodel} svs apply --genome {params.reference_cmap} --svs {input[0]} --output {output[0]} &> {log}
+            conda deactivate' """
 
-rule visualize_virtual_karyotype:
+rule simulate_molecules:
     input:
-        cytoband_out = "vk_results/{sample}/{sample}_custom_cytobands.txt",
-        genome = "vk_results/{sample}/{sample}_custom_genome.txt",
-        orientation = "vk_results/{sample}/{sample}_contig_orientation.txt",
-        kprect = "vk_results/{sample}/{sample}_kprect_parameters.txt"
+        cmap = "samples/{sample}/{sample}_simulation.cmap",
     log:
-        "logs/scripts/visualize_virtual_karyotype{sample}.log"
+        "logs/scripts/simulate_molecules_{sample}.log"
     params:
-        sample_handle = lambda w: "vk_results/{sample}/{sample}_".format(sample=w.sample),
-    conda:
-        "envs/karyoploter_env.yaml"
+        out_dir = lambda w: "samples/{sample}/molecules".format(sample=w.sample),
+        sim_params = config['sim_params']
     output:
-        "vk_results/{sample}/{sample}_processed.txt",
-        temp("vk_results/{sample}/{sample}_karyotype_split_1_of_2.pdf"),
-        temp("vk_results/{sample}/{sample}_karyotype_split_2_of_2.pdf")
+        "samples/{sample}/molecules/task_complete.tsv",
+        "samples/{sample}/molecules/{sample}_molecules.bnx"
     shell:
         """
-        Rscript scripts/generate_ideogram.R {input.cytoband_out} {input.genome} {input.orientation} {input.kprect} {output[0]} {params.sample_handle} &> {log}
-        """
-
-rule rotate_images:
-    input:
-        image1 = "vk_results/{sample}/{sample}_karyotype_split_1_of_2.pdf",
-        image2 = "vk_results/{sample}/{sample}_karyotype_split_2_of_2.pdf"
-    log:
-        "logs/scripts/rotate_images_{sample}.log"
-    conda:
-        "envs/pypdf_env.yaml"
-    output:
-        "vk_results/{sample}/{sample}_karyotype_rotated_split_1_of_2.pdf",
-        "vk_results/{sample}/{sample}_karyotype_rotated_split_2_of_2.pdf"
-    shell:
-        """
-        python scripts/rotate_ideogram.py --image1 {input.image1} --image2 {input.image2} --out1 {output[0]} --out2 {output[1]} &> {log}
+        mkdir -p {params.out_dir}
+        bash -c '
+            . $HOME/.bashrc # if not loaded automatically
+            conda activate bionano_python3.0
+            Rscript scripts/simulate_molecules.R -r {input.cmap} -o {params.out_dir} -p {params.sim_params} &> {log}
+            touch {output[0]}
+            mv {params.out_dir}/*.bnx {output[1]}
+            conda deactivate'
         """

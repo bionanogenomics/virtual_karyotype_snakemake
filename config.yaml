@@ -1,6 +1,15 @@
-#####################################################
-# Reapeatabiligy and Precision workflow config file #
-#####################################################
+###################################################
+# Molecule simulation workflow configuration file #
+###################################################
+
+reference_cmap:
+  /local/bioinformatics/reference/hg38/hg38_CTTAAG_0kb_0labels.cmap 
+
+bngomodel:
+  /home/jestabrook/repositories/svconfmodels/bin/bngomodel
+
+sim_params:
+  /home/jestabrook/analyses/simulation_workflow/scripts/sim_params.R
 
 centro:
   resources/hg38_centro.txt
