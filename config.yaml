@@ -12,13 +12,13 @@ sim_params:
   /home/jestabrook/analyses/simulation_workflow/scripts/sim_params.R
 
 centro:
-  resources/hg38_centro.txt
+  /home/jestabrook/analyses/simulation_workflow/resources/hg38_centro.txt
 
 cytoband:
-  resources/cytoBand.txt
+  /home/jestabrook/analyses/simulation_workflow/resources/cytoBand.txt
 
 resolved_cytoband:
-  resources/hg38_400_level_cytoband_updated.tsv
+  /home/jestabrook/analyses/simulation_workflow/resources/hg38_400_level_cytoband_updated.tsv
 
 aws_access_key_id:
   AKIA52DICWU3K52VN56N

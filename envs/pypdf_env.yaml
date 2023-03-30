@@ -1,0 +1,28 @@
+name: pypdf_env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1
+  - _openmp_mutex=4.5
+  - bzip2=1.0.8
+  - ca-certificates=2022.12.7
+  - ld_impl_linux-64=2.40
+  - libffi=3.4.2
+  - libgcc-ng=12.2.0
+  - libgomp=12.2.0
+  - libnsl=2.0.0
+  - libsqlite=3.40.0
+  - libuuid=2.32.1
+  - libzlib=1.2.13
+  - ncurses=6.3
+  - openssl=3.0.8
+  - pip=23.0
+  - pypdf2=2.11.1
+  - python=3.11.0
+  - readline=8.1.2
+  - setuptools=67.3.2
+  - tk=8.6.12
+  - tzdata=2022g
+  - wheel=0.38.4
+  - xz=5.2.6
