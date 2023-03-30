@@ -1,3 +1,6 @@
+![Bionano logo](images/Bionano-Logo.png?raw=true)
+
+
 ## Bionano - Clinical Affairs Simulation workflow
 ---
 This pipeline is designed to simulate SVs based on a predefined file of SVs that adhere to the Simulation Format defined below. This workflow requires
@@ -80,6 +83,8 @@ R CMD INSTALL --no-multiarch --with-keep.source MolSim
 ```
 
 ***Installing into isolated environments is best practice in order to avoid compiler conflicts with non-dependent packages.***
+
+![Workflow dag](images/dag.png?raw=true)
 
 ----
 
