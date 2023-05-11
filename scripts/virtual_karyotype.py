@@ -1007,8 +1007,14 @@ connected_components = find_connected_components(g)
 paths = []
 for component in connected_components:
     component_edges = return_all_edges_in_cc(component, g)
-    paths.append(printEulerTour(component, component_edges, g))
-
+    print('Compenent edges!')
+    print(component_edges)
+    if len(component_edges) != 0:
+        try:
+            paths.append(printEulerTour(component, component_edges, g))
+        except:
+            print('Unable to Parse path!')
+            
 node_to_map_dict = node_to_map(svs, xmap, g)
 path_map = {}
 with open(output , 'w') as f :
@@ -1025,14 +1031,14 @@ with open(output , 'w') as f :
         number += 1
     c = 1
     for p in paths:
-        check_path = Solution(p)
-        if not check_path.palindrome():
-            for structure in convert_path_to_segment(p,g):
-                merged_coords,iscn_coords = convert_path(structure, path_map, cytoband_filtered)
-                f.write('Path'+str(c)+ ' = '+structure+'\n')
-                f.write('Path'+str(c)+ ' = '+merged_coords+'\n')
-                f.write('Path'+str(c)+ ' = '+iscn_coords+'\n')
-                c+=1
+        # check_path = Solution(p)
+        # if not check_path.palindrome():
+        for structure in convert_path_to_segment(p,g):
+            merged_coords,iscn_coords = convert_path(structure, path_map, cytoband_filtered)
+            f.write('Path'+str(c)+ ' = '+structure+'\n')
+            f.write('Path'+str(c)+ ' = '+merged_coords+'\n')
+            f.write('Path'+str(c)+ ' = '+iscn_coords+'\n')
+            c+=1
 
 node_to_map_dict = node_to_map(svs, xmap, g)
 path_map = {}

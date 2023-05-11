@@ -26,7 +26,7 @@ def format_iscn_results(iscn_format, cytobands, cytobands_out, genome_out, conti
         relative path to sample specific kprect parameters file       
     """
     cytoband_filtered = read_in_custom_cyto(cytobands = cytobands)
-    iscn_results = pd.read_table(iscn_format,skiprows=1,sep=' = ',engine='python',header=None)
+    iscn_results = pd.read_table(iscn_format, sep=' = ',engine='python',header=None)
     iscn_results.columns = ['paths','iscn']
     iscn_split_coords = iscn_results['iscn'].str.split(',')
     iscn_paths = iscn_results['paths']

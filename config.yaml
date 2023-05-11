@@ -52,3 +52,9 @@ sunnyside:
 
 keyhole:
   keyhole-bionanoaccess-com
+
+downsample_bnx:
+  /local/bioinformatics/common/simulation/scripts/downsample_bnx.sh
+
+refAligner:
+  /home/jestabrook/repositories/Solve3.7_20221104_163244_27/RefAligner/12432.12642rel/RefAligner
