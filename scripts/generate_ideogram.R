@@ -41,8 +41,8 @@ plot_kprects <- function(
       x1 <- as.numeric(sub_kprect[3])
       chrom <- sub_kprect[9]
       midpoint <- as.numeric(sub_kprect[20])
-      kpRect(kp, chr=path, x0=x0, x1=x1, y0=0.0, y1=0.25, col=color_mapper[chrom], lwd=0.1)
-      kpText(kp, chr=path, x=midpoint, y=0.125, labels=chrom, cex=0.5, srt=90)
+      kpRect(kp, chr=path, x0=x0, x1=x1, y0=0.0, y1=1.0, col=color_mapper[chrom], lwd=0.1)
+      kpText(kp, chr=path, x=midpoint, y=0.5, labels=chrom, cex=1.25, srt=90)
 }
 
 plot_orientation <- function(
@@ -72,6 +72,30 @@ plot_total_ideogram <- function(
    apply(sub_kprect, 1, plot_kprects, path=path, color_mapper=color_mapper, kp=kp)
    apply(sub_orientation, 1, plot_orientation, path=path, kp=kp)
 }
+
+chunk.2 <- function(x, n, force.number.of.groups = TRUE, len = length(x), groups = trunc(len/n), overflow = len%%n) { 
+  if(force.number.of.groups) {
+    f1 <- as.character(sort(rep(1:n, groups)))
+    f <- as.character(c(f1, rep(n, overflow)))
+  } else {
+    f1 <- as.character(sort(rep(1:groups, n)))
+    f <- as.character(c(f1, rep("overflow", overflow)))
+  }
+  
+  g <- split(x, f)
+  
+  if(force.number.of.groups) {
+    g.names <- names(g)
+    g.names.ordered <- as.character(sort(as.numeric(g.names)))
+  } else {
+    g.names <- names(g[-length(g)])
+    g.names.ordered <- as.character(sort(as.numeric(g.names)))
+    g.names.ordered <- c(g.names.ordered, "overflow")
+  }
+  
+  return(g[g.names.ordered])
+}
+
 
 pp <- getDefaultPlotParams(plot.type=2)
 pp$leftmargin <- 0.3
@@ -104,8 +128,8 @@ pp$data2inmargin <- 20
 pp$data1inmargin <- 20
 pp$data1height <- 300
 pp$tick.len <- 30
-pp$data1outmargin <- 5
-pp$data2outmargin <- 5
+pp$data1outmargin <- 20
+pp$data2outmargin <- 20
 pp$data1max=1
 pp$data1min=0
 pp$bottommargin = 30
@@ -114,11 +138,9 @@ pp$topmargin = 30
 cyto <- data.frame(custom.cytobands)
 sub_cyto <- cyto[c('seqnames','chrom')]
 non_dup <- sub_cyto[!duplicated(sub_cyto),]
-# ordered_cyto <- non_dup[order(non_dup$chrom),]
-# chromosomes <- ordered_cyto$seqnames[!duplicated(non_dup$seqnames)]
 chromosomes <- non_dup$seqnames[!duplicated(non_dup$seqnames)]
 chrom_order <- rev(as.character(chromosomes))
-chrom_split_order <- split(chrom_order,ceiling(seq_along(chrom_order)/23))
+chrom_split_order <- chunk.2(chrom_order, 2, force.number.of.groups=T)
 seqlevels(custom.genome) <- chrom_order
 custom.genome <- sort(custom.genome)
 seqlevels(custom.cytobands,) <- chrom_order
@@ -127,7 +149,7 @@ levels(custom.cytobands@seqnames) <- chrom_order
 
 contig_split <- round(length(chrom_order)/2)
 
-chrom_split_order <- split(chrom_order,ceiling(seq_along(chrom_order)/contig_split))
+chrom_split_order <- chunk.2(chrom_order, 2, force.number.of.groups=T)
 
 genome_part_1 <- custom.genome[seqnames(custom.genome) %in% chrom_split_order$`2`]
 cytoband_part_1 <- subsetByOverlaps(custom.cytobands,genome_part_1)
@@ -141,7 +163,7 @@ pdf(fig_out, width=10,height=20,pointsize=1)
 genome_split = split(genome_part_1,genome_part_1@seqnames)
 kp <- plotKaryotype(chromosomes=chrom_split_order$`2`, genome=genome_part_1, plot.type=2, cytobands=cytoband_part_1, plot.params=pp, lwd=0.1, cex=3.5)
 kpAddBaseNumbers(kp,cex=.8)
-kpAddCytobandLabels(kp, srt=90, col='#2C02FD', cex=2)
+kpAddCytobandLabels(kp, srt=90, col='#2C02FD', cex=1.5, force.all=TRUE)
 for(i in names(genome_split)){
    sub_cytoband <- cytoband_part_1[cytoband_part_1@seqnames==i]
    sub_genome <- genome_part_1[genome_part_1@seqnames==i] 
@@ -164,7 +186,7 @@ pdf(fig_out, width=10,height=20,pointsize=1)
 genome_split = split(genome_part_2,genome_part_2@seqnames)
 kp <- plotKaryotype(chromosomes=chrom_split_order$`1`, genome=genome_part_2, plot.type=2, cytobands=cytoband_part_2, plot.params=pp, cex=3.5)
 kpAddBaseNumbers(kp,cex=.8)
-kpAddCytobandLabels(kp, srt=90, col='#2C02FD', cex=2)
+kpAddCytobandLabels(kp, srt=90, col='#2C02FD', cex=1.5, force.all=TRUE)
 for(i in names(genome_split)){
    sub_cytoband <- cytoband_part_2[cytoband_part_2@seqnames==i]
    sub_genome <- genome_part_2[genome_part_2@seqnames==i] 
