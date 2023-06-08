@@ -48,6 +48,7 @@ def format_iscn_results(iscn_format, cytobands, cytobands_out, genome_out, conti
     interval_out = pd.concat(intervals_out_list)
     iscn_cyto['chrom'] = iscn_cyto['chr']
     iscn_cyto['chr'] = iscn_cyto['name']
+    interval_out['contig_id'] = interval_out['contig_id'].replace({'23':'X','24':'Y'})
     path_map_dict = interval_out.loc[:,['path','contig_id']].drop_duplicates().set_index('path').to_dict()['contig_id']
     update_mapper = {k:'{} : {}'.format(k,v) for k,v in path_map_dict.items()}
     iscn_cyto['chr'] = iscn_cyto['chr'].map(update_mapper)
@@ -55,13 +56,15 @@ def format_iscn_results(iscn_format, cytobands, cytobands_out, genome_out, conti
     resolved_cyto_non_orient, resolved_stain = resolve_iscn_cyto(iscn_cyto)
     resolved_cyto = orient_p_to_q(resolved_cyto_non_orient)
     resolved_cyto.rename(columns={'gieStain':'original_stain','Resolved_stain':'gieStain','name':'original_name','Resolved_band':'name'},inplace=True)
+    resolved_cyto['start'] = resolved_cyto['start'] + 1
+    resolved_cyto['end'] = resolved_cyto['end'] + 1 
     resolved_cyto.to_csv(cytobands_out, sep='\t',index=False)
     resolved_cyto['delta'] = resolved_cyto['end'] - resolved_cyto['start']
     path_order = resolved_cyto['chr'].unique().tolist()
     custom_genome = resolved_cyto.loc[:,['chr','delta']].groupby('chr').sum().sort_values('chr').reset_index()
     custom_genome.chr = custom_genome.chr.astype('category')
     custom_genome.chr = custom_genome.chr.cat.set_categories(path_order)
-    custom_genome['start'] = 0
+    custom_genome['start'] = 1
     custom_genome['end'] = custom_genome['delta']
     custom_genome_out = custom_genome.reindex(['chr','start','end'],axis=1).sort_values('chr')
     custom_genome_out.to_csv(genome_out,sep='\t',index=False)
@@ -451,10 +454,29 @@ def read_in_custom_cyto(cytobands = 'resources/hg38_400_level_cytoband.tsv'):
     cytoband['end'] = cytoband['end'].astype(int)
     return cytoband
 
+def check_majority_rows(df, column_name, condition_value, end_row):
+    subset = df.loc[:end_row]  # Subset the dataframe until the end row
+    count_p = subset[column_name].eq(condition_value).sum()  # Count the number of 'p' values
+    count_q = subset[column_name].eq('q').sum()  # Count the number of 'q' values
+    return count_q > count_p  
+
 def check_strand(frame):
+    frame = frame.reset_index(drop=True)
+    status = False
+    frame['arm'] = frame['band_base'].str.slice(0,1)
     if (len(frame['strand'].unique()) == 1) and (frame['strand'].unique()[0] == '-'):
-        return True
- 
+        status = True
+    if (len(frame['strand'].unique()) == 1) and (frame['strand'].unique()[0] == '+'):
+        status = False
+    else:
+        if 'acen' in frame['Resolved_stain']:
+            end_row = frame.loc[frame['Resolved_stain']=='acen'].index.tolist()[0]
+            status = check_majority_rows(frame, 'arm', 'p', end_row)
+        else:
+            end_row = int(frame.shape[0]/2)
+            status = check_majority_rows(frame, 'arm', 'p', end_row)
+    return status
+
 def orient_p_to_q(resolved_cyto):
     """
     Resolves non-contiguous genomic segments and embeds major cytobands in paths detected by VK algorithm
@@ -513,6 +535,7 @@ def relabel_paths(resolved_strand_cyto):
         sorted by presence of cetromere and ordered by autosome, iscn relabled cytoband Dataframe
     """
     iscn_cyto_copy = resolved_strand_cyto.copy()
+    iscn_cyto_copy['chrom'] = iscn_cyto_copy['chrom'].replace({'23':'X','24':'Y'})
     cyto_list = []
     grouped_iscn = iscn_cyto_copy.groupby('Path')
     for g,frame in grouped_iscn:
@@ -533,8 +556,12 @@ def relabel_paths(resolved_strand_cyto):
                     non_centromere = list(set(contigs) - set(centromere))
                     frame['iscn'] = "{path} : der({centromere})t({contig})".format(path=g,centromere=centromere[0],contig=';'.join(map(str,non_centromere)))
                 else:
+                    #Dicentric Chromosomes
                     non_centromere = list(set(contigs) - set(centromere))
-                    frame['iscn'] = "{path} : der({centromere})t({contig})".format(path=g,centromere=';'.join(map(str,centromere)),contig=';'.join(map(str,non_centromere)))
+                    if len(non_centromere) != 0:
+                        frame['iscn'] = "{path} : dic({centromere})t({contig})".format(path=g,centromere=';'.join(map(str,centromere)),contig=';'.join(map(str,non_centromere)))
+                    else:
+                        frame['iscn'] = "{path} : dic({centromere})".format(path=g,centromere=';'.join(map(str,centromere)))
             cyto_list.append(frame)
         else:
             frame['centromere'] = 2
@@ -548,7 +575,7 @@ def relabel_paths(resolved_strand_cyto):
             cyto_list.append(frame)
     resolved_strand_iscn_cyto = pd.concat(cyto_list)
     index_cols = ['iscn', 'start', 'end', 'name', 'gieStain', 'band_base', 'Path', 'strand', 'chrom', 'bp', 'original_start', 'original_end', 'Updated_stain', 'centromere', 'chr','sort_chrom','Resolved_band','Resolved_stain']
-    resolved_strand_iscn_cyto['sort_chrom'] = resolved_strand_iscn_cyto['sort_chrom'].astype(int)
+    resolved_strand_iscn_cyto['sort_chrom'] = resolved_strand_iscn_cyto['sort_chrom'].replace({'X':'23','Y':'24'}).astype(int)
     resolved_strand_iscn_sorted = resolved_strand_iscn_cyto.sort_values(['centromere','sort_chrom','chr','start','end']).reindex(index_cols,axis=1).rename(columns={'iscn':'chr','chr':'iscn'})
     return resolved_strand_iscn_sorted
 
