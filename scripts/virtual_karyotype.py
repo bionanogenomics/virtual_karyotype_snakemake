@@ -35,15 +35,18 @@ class Vertices: #Class of vertices in out graph
 class Graph: #Class of graph 
     def __init__(self):
         self.vertices = [] #list of Object of vertices
-        self.edges = [] #list of edges. each edges is tuple of (u,v,M,type) u and v are vertices connected to each other M represent edge multiplicities and type can be "S", "SV", "R", "D"- i.e. Segment edge, Structural Variation edge, Reference Edge or Dummy Edge
+        self.edges = [] #list of edges. each edges is tuple of (u,v,M,type) u and v are vertices connected to each other M represent edge multiplicities and type can be "S", "SV", "R", "D"
+
     def print_node(self): #print all nodes
         for v in self.vertices:
             print(v.id, v.chromosome, v.pos, v.cn, v.type, v.edges)
+
     def return_node(self, id): # return node by id
         for v in self.vertices:
             if id == v.id:
                 return v
         return None
+
     def return_edges(self, a, b): #return all type of edge between two nodes. it return a list of edges or None
         ans = []
         for e in self.edges:
@@ -52,16 +55,11 @@ class Graph: #Class of graph
         if len(ans)>0:
             return ans
         return None
+
     def add_dummy_edges(self, u, v):#add dummy edges with type "D" between two nodes if already edge exist between them increase the CN 
-        e = self.return_edges(u, v) 
-        if max(u,v)%2 == 1 and abs(u-v) == 1: #if we need to add dummy edge between two nodes of one segment, remove it instead of adding it
-            if len(e) == 1:
-                e = e[0]
-                cn = e[2] - 1
-                self.edges.remove(e)
-                self.edges.append((e[0], e[1], cn, e[3]))
-        #el
-        elif e == None:
+        e = self.return_edges(u, v)
+        print(e)
+        if e == None:
             self.edges.append((u, v, 1, 'D'))
             self.return_node(u).append_edges(v)
             self.return_node(v).append_edges(u)
@@ -72,10 +70,17 @@ class Graph: #Class of graph
                 self.edges.remove(e)
                 self.edges.append((e[0], e[1], cn, e[3]))
             else:
-                e = e[0]
                 cn = e[2] + 1
                 self.edges.remove(e)
                 self.edges.append((e[0], e[1], cn, e[3]))
+
+    def update_edges(self, a, b, count,e_type): #update an edge between node a nad b with type = e_type to the new number
+        e_list = self.return_edges(a, b)
+        for e in e_list:
+            if e[3] == e_type:
+                self.edges.remove(e)
+                if count > 0:
+                    self.edges.append((e[0], e[1], count, e[3]))
 
     def update_edges(self, a, b, count,e_type): #update an edge between node a nad b with type = e_type to the new number
         e_list = self.return_edges(a, b)
@@ -91,8 +96,6 @@ def find_bp_in_segment(chromosome, point, segments): #this function get chromoso
         if str(i.chromosome) == str(chromosome):
             if i.start <= point <= i.end:
                 i.bp.append(point)
-
-
 
 def merge_list(l): # this function merge all breakpoints in a segment within a window of 50Kbp
     l = list(set(l))
@@ -150,6 +153,7 @@ def detect_sv_directions(sv, xmap): #this function detect the direction of one s
     return dir1_b, dir2_b
 
 
+
 def find_nodes(chromosome, pos, vertices, node_type): #find the closest node and return it id to the chromosome and position and type
     dist = 999999999 #as input take the chromosome number and position and type of node we are looking to it(H or T) and return it.
     ans = -1
@@ -159,7 +163,6 @@ def find_nodes(chromosome, pos, vertices, node_type): #find the closest node and
                 dist = abs(v.pos - pos)
                 ans = v.id
     return ans
-
 
 def find_start_end(prev_point, start, label_list):
     ans = []
@@ -171,7 +174,6 @@ def find_start_end(prev_point, start, label_list):
     else:
         return min(ans), ans[-1]
 
-
 def next_prev_label(chromosome, pos): #not used can be deleted
     for k in rcop.keys():
         label_list = list(rcop[k].keys())
@@ -180,8 +182,8 @@ def next_prev_label(chromosome, pos): #not used can be deleted
                 if i == pos:
                     return label_list[index - 1], label_list[(index + 1) % (len(label_list))]
 
-
-def detect_overlap_map(chromosome, pos,xmap): # this function detect if there is a map(alignment that overlap this region)
+def detect_overlap_map(chromosome, pos, xmap): # this function detect if there is a map(alignment that overlap this region)
+    # maybe it is good idea instead of 1bp assume a window here.
     for xmapid in xmap.keys():
         x = xmap[xmapid]
         if int(chromosome) == int(x['RefContigID']):
@@ -193,6 +195,7 @@ def Plot_graph(g, file, name): #this function plot the graph
     vertices = g.vertices
     fig = plt.figure(figsize=(20, 25))
     plt.title(name)
+    # fig.suptitle(args.name, fontsize=48)
     rows = 6
     column = 4
     grid = plt.GridSpec(rows, column, wspace=.25, hspace=.25)
@@ -275,13 +278,11 @@ def Plot_graph(g, file, name): #this function plot the graph
                 plt.annotate('(+,+)', xy=(node2.pos, node2.cn + 0.5+j))
     plt.savefig(file, dpi=200)
 
-
-def find_in_smap(id,smap): # return a smap call with the iD otherwise return None
+def find_in_smap(id, smap): # return a smap call with the iD otherwise return None
     for s in smap:
         if s.smap_id == id:
             return s
     return None
-
 
 def dfs(i, temp, g, visited): #run dfs alg on graph g on vertices i. visited is a list of seen vertices before visiting this node.
     visited.append(i)
@@ -303,6 +304,7 @@ def find_connected_components(g): # find connected components in a graph g
 
 
 def return_all_edges_in_cc(c, g): #this function return all edges in graph g which is in connectec components C
+    # c is a list of all vertices id in this connected component
     component_edges = []
     paired = itertools.combinations(c, 2) #all combination two of these vertices will check if the edges exist or not
     for p in paired:
@@ -327,6 +329,7 @@ def estimating_edge_multiplicities_in_CC(component, g, xmap):
     sv_sum = 0 # sum all variables for SV edges
     cn_tune = 0 # sum all variables for changing CN (tuning CN)
     component_edges = return_all_edges_in_cc(component, g)
+    # print('Siavash', component_edges)
     for i in range(len(component_edges)):
         e = component_edges[i]
         if e[3] != 'S': #in it is not Segment edge
@@ -340,13 +343,15 @@ def estimating_edge_multiplicities_in_CC(component, g, xmap):
                     sv_sum += component_edges[i][1] 
             elif e[3] == 'R': #if it is reference edge we want to have another constraint if a map overlap it it should be traverse at least one so updating the constraints
                 node = g.return_node(e[0])
-                if detect_overlap_map(node.chromosome, node.pos, xmap):
+                if detect_overlap_map(node.chromosome, node.pos):
                     Lp_prob+= component_edges[i][1] >=1
         else: #if it is Segment edge
             component_edges[i] = [e, p.LpVariable('Y' + str(i), cat=p.LpInteger),p.LpVariable('Z' + str(i), cat=p.LpInteger)] # variable Y_i is for tuning CN of each segment if we need to change the CN
+            # For having abselute value in ILP for we need to define variable Z as well. 
             Lp_prob += component_edges[i][2]>= -component_edges[i][1] #this is used for defining abselute value
             Lp_prob += component_edges[i][2]>= component_edges[i][1]
-            if calculate_seg_length(e,g) <= 1000000:
+            # the following if is a condition for setting the limit on how much the CN can be changed for segment with length less than 1Mbp it is one
+            if calculate_seg_length(e) <= 1000000:
                 Lp_prob+= component_edges[i][2] <=1
             else: # for rest it is 25% of their length
                 Lp_prob += component_edges[i][2]<= math.ceil(e[2]/4)
@@ -368,20 +373,26 @@ def estimating_edge_multiplicities_in_CC(component, g, xmap):
                 if e[0][3] == 'S':
                     cond = cond + e[1] #summing tuning variable
                     Lp_prob += cond <= e[0][2] # this is important line wich we apply copy number balance condition
-                    if calculate_seg_length(e[0],g) > 50000: # for segment less than 50 Kbp no penalty applied for tuning segment CN
+                    if calculate_seg_length(e[0]) > 50000: # for segment less than 50 Kbp no penalty applied for tuning segment CN
                         cn_tune += e[2]
                     objective = objective + e[0][2] - e[0][1] #updating the Objective Function
         else:
             objective = objective + v_edges[0][0][2]
-            if calculate_seg_length(v_edges[0][0],g) > 50000:# for segment less than 50 Kbp no penalty applied for tuning segment CN
+            if calculate_seg_length(v_edges[0][0]) > 50000:# for segment less than 50 Kbp no penalty applied for tuning segment CN
                 cn_tune += v_edges[0][2]
-    objective = 2 * objective  - 1 * sv_sum + 7 * cn_tune
+    #Just for debug
+    # print('obj', objective)
+    # print('Sv_sum', sv_sum)
+    # objective = 10 * objective  - 9 * sv_sum + 15 * cn_tune
+    objective = 2 * objective  - 1 * sv_sum + 4 * cn_tune
+    # print('obj', objective)
     Lp_prob += objective
     print(Lp_prob)
     status = Lp_prob.solve()
     print(p.LpStatus[status])  # The solution status
     print(Lp_prob.variables())
     for i in Lp_prob.variables():
+        #Set edges multiplicity based on variiable values
         if i.name != '__dummy' and i.name.startswith('X'):
             index = int(i.name[1:])
             component_edges[index][0] = list(component_edges[index][0])
@@ -406,6 +417,7 @@ def estimating_edge_multiplicities_in_CC(component, g, xmap):
         if i[2] > 0:
             ans.append(i)
         elif i[2] == 0: #if estimate of an edge is 0, update the graph  if two different type of edge connect same node it need to be check 
+            #CHECK CHECK CHECK
             if g.return_edges(i[0], i[1]) == None:
                 g.return_node(i[0]).remove_edges(i[1])
                 if i[0]!=i[1]:
@@ -434,6 +446,7 @@ def remove_edge(g2, e): #this function remove edge e from graph g2 and if edge e
 
 
 def dfs_count(g, v, visited): #count number of available visired edge from v in graph g 
+    #for more info look at here https://www.geeksforgeeks.org/fleurys-algorithm-for-printing-eulerian-path/
     count = 1
     visited.append(v)
     for i in g.return_node(v).edges:
@@ -446,6 +459,7 @@ def isValidNextEdge(g, u, v, e): # check this edge is bridge or not. Can we remo
     if len(g.return_node(u).edges) == 1 and g.return_node(u).edges[0] == v: #if there is no other way just traverse it
         return True
     else:
+        #check if it is bridge or not
         visited = []
         count1 = dfs_count(g, u, visited)
         g2 = remove_edge(g, e)
@@ -471,8 +485,10 @@ def printEulerUtil(g, u, prev): #find Eulerian path or circuts in graph g starti
                 valid.append((v,e))
                 if abs(v- u) == 1 and v !=prev: #We want to force if next node is availanle traverse it at first between all options. 
                     next_find = True
+                    # print('NextFind', u, v)
                     next_node = v
     valid = sorted(valid, key=lambda tup: (tup[0],tup[1][3])) # this is all valid options for traverse 
+    # print('haa', u, prev, valid,next_find, next_node)
     if len(valid) == 1: #if length is equal to one Just traverse it. 
         g = remove_edge(g, valid[0][1])
         return [u] + printEulerUtil(g, valid[0][0], u)
@@ -481,17 +497,20 @@ def printEulerUtil(g, u, prev): #find Eulerian path or circuts in graph g starti
             for i in valid: 
                 if i[0] == next_node:
                     g = remove_edge(g, i[1])    
+                    # print('ali')
                     return [u] + printEulerUtil(g, i[0], u)
         find = False
         for i in valid: 
             if i[0]!= prev and i[0] != u: #first if next node is not previouse and current one jump to it
                 g = remove_edge(g, i[1])
                 find = True
+                # print('reza')
                 return [u] + printEulerUtil(g, i[0], u)
         if not find :
             for i in valid: 
                 if i[0]!= prev:
                     g = remove_edge(g, i[1])
+                    # print('mamad')
                     return [u] + printEulerUtil(g, i[0], u)
             g = remove_edge(g, valid[0][1])
             return [u] + printEulerUtil(g, valid[0][0], u)
@@ -527,9 +546,13 @@ def printEulerTour(component, component_edges, g): #Find Eulerian path/circuts i
     odd_vertices = []
     print('Component', component)
     print('Component edges', component_edges)
+
     segment_vertices = detect_segment_vertices(component, component_edges)
     odd_vertices = detect_segment_odd_degree(component, component_edges)
     print('ODD vertices', odd_vertices)
+    # for i in range(0,len(segment_vertices), 2):
+    #     g2.add_dummy_edges(segment_vertices[i], segment_vertices[i+1])
+    # print(g2.edges)
     print('TOUR')
     print(segment_vertices)
     if len(odd_vertices) == 0: # Eulerian circuites exist 
@@ -560,18 +583,23 @@ def printEulerTour(component, component_edges, g): #Find Eulerian path/circuts i
                 a = printEulerUtil(g2, odd_vertices[save_index], -1)
             else:
                 a = printEulerUtil(g2, odd_vertices[save_index+1], -1)   
+
     print(g2.edges)
     g2.print_node()
     print('Answer',a)
     return a 
 
 def detect_del_dup_cn(chromosome, start, end, segments): # this function detect that for a deletion or duplication, do we have CNV call as well or no
+    #chromosome, start, end position of deletion call are input
     for i,s in enumerate(segments):#search in segments
         if int(s.chromosome) == int(chromosome):
             overlap = max(0,min(end, s.end) -max(start, s.start))
+            #if these two windows are overlapping each other 0.9 and 1.2 of theirlength and the segment have CN different from one of it adjacent segments it return true.
             if overlap > 0.9 * (s.end - s.start):
                 if (end - start)< 1.2 * (s.end - s.start):
                     if (s.int_cn != segments[(i+1)%len(segments)].int_cn and s.chromosome == segments[(i+1)%len(segments)].chromosome) or (s.int_cn != segments[i-1].int_cn and s.chromosome == segments[i-1].chromosome):
+                        # print('Kir', chromosome, start, end, overlap)
+                        # print('Kir', start , end, s.start,s.end)
                         return True, s.start , s.end
             if overlap > 0.9 * (end - start):
                 if (s.end - s.start)< 1.2 * (end - start):
@@ -581,7 +609,7 @@ def detect_del_dup_cn(chromosome, start, end, segments): # this function detect 
 
 def detect_duplicatioon_inversion_cn(sv, xmap, segments): # same as above for duplication calls. 
     window_lim = 50000
-    node_dir1 , node_dir2 = detect_sv_directions(sv, xmap)
+    node_dir1 , node_dir2 = detect_sv_directions(sv)
     if node_dir1 == 'T' and node_dir2 == 'T': #right fold back
         for i,s in enumerate(segments):
             if int(s.chromosome) == int(sv.ref_c_id1): #only compared with the next contigs
@@ -600,8 +628,8 @@ def detect_receprical_translocation(sv, xmap, smap): #sometimes one of these rec
     for i in smap:
         if i.ref_c_id1 == sv.ref_c_id1 and i.ref_c_id2 == sv.ref_c_id2 and sv.smap_id != i.smap_id:
             if abs(i.ref_start - sv.ref_start) < window_lim and abs(i.ref_end - sv.ref_end) < window_lim:
-                i_dir1, i_dir2 = detect_sv_directions(i, xmap)
-                sv_dir1, sv_dir2 = detect_sv_directions(sv, xmap)
+                i_dir1, i_dir2 = detect_sv_directions(i)
+                sv_dir1, sv_dir2 = detect_sv_directions(sv)
                 if i_dir1 != sv_dir1 and i_dir2 != sv_dir2:
                     return True, i
     return False, None
@@ -625,12 +653,14 @@ def convert_path_to_segment(p,g): # this is important function that convert Eule
     for p in ans:
         temp = ''
         for i in range(0,len(p)-1,2):
+            # print('as', i, len(p), p)
             seg_number = int((max(p[i],p[i+1])+1)/2)
             direction = '+'
             if p[i] > p[i+1]:
                 direction = '-'
             temp = temp + str(seg_number)+direction+' '
         ans2.append(temp)
+
     return ans2
 
 def check_exiest_call(chromosome , start , end , type): # if we have a call like gain or loss  but in CNV it is filtered retrive it
@@ -781,6 +811,11 @@ args = parser.parse_args()
 segments, all_seg = parse_cnvcall(args.cnv)
 smap = parse_smap(args.smap) 
 rcop, rcov = parse_rcmap(args.rcmap)
+chrY_cn = int(np.average(list(rcop['24'].values())) + 0.5)
+chrX_cn = 2
+if chrY_cn > 0:
+    chrX_cn = 1
+    chrY_cn = 1
 xmap = parse_xmap(args.xmap)
 if args.centro is not None: # this will parse centromere region. It can be hard coded. 
     centro = parse_centro(args.centro)
@@ -810,6 +845,12 @@ for k in rcop.keys():
         new_seg.chromosome = k
         new_seg.fractional_cn = 2
         new_seg.int_cn = 2 #assumption that sample is diploide. default CN = 2
+        if int(k) == 23:
+            new_seg.fractional_cn = chrX_cn
+            new_seg.int_cn = chrX_cn
+        if int(k) == 24:
+            new_seg.fractional_cn = chrY_cn
+            new_seg.int_cn = chrY_cn        
         new_seg.bp = [0, list(rcop[k].keys())[-1]]
         segments.append(new_seg)
     else:
@@ -824,6 +865,12 @@ for k in rcop.keys():
                 new_seg.chromosome = k
                 new_seg.fractional_cn = 2
                 new_seg.int_cn = 2 #assumption that sample is diploide. default CN = 2
+                if int(k) == 23:
+                    new_seg.fractional_cn = chrX_cn
+                    new_seg.int_cn = chrX_cn
+                if int(k) == 24:
+                    new_seg.fractional_cn = chrY_cn
+                    new_seg.int_cn = chrY_cn
                 new_seg.bp = [start, end]
                 segments.append(new_seg)
             prev_point = s.end
@@ -836,8 +883,15 @@ for k in rcop.keys():
             new_seg.chromosome = k
             new_seg.fractional_cn = 2
             new_seg.int_cn = 2
+            if int(k) == 23:
+                new_seg.fractional_cn = chrX_cn
+                new_seg.int_cn = chrX_cn
+            if int(k) == 24:
+                new_seg.fractional_cn = chrY_cn
+                new_seg.int_cn = chrY_cn
             new_seg.bp = [start, end]
             segments.append(new_seg)
+            
 segments.sort(key=lambda x: (int(x.chromosome), x.start))
 
 for i in smap:
