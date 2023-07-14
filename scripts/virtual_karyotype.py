@@ -343,7 +343,7 @@ def estimating_edge_multiplicities_in_CC(component, g, xmap):
                     sv_sum += component_edges[i][1] 
             elif e[3] == 'R': #if it is reference edge we want to have another constraint if a map overlap it it should be traverse at least one so updating the constraints
                 node = g.return_node(e[0])
-                if detect_overlap_map(node.chromosome, node.pos):
+                if detect_overlap_map(node.chromosome, node.pos, xmap):
                     Lp_prob+= component_edges[i][1] >=1
         else: #if it is Segment edge
             component_edges[i] = [e, p.LpVariable('Y' + str(i), cat=p.LpInteger),p.LpVariable('Z' + str(i), cat=p.LpInteger)] # variable Y_i is for tuning CN of each segment if we need to change the CN
@@ -351,7 +351,7 @@ def estimating_edge_multiplicities_in_CC(component, g, xmap):
             Lp_prob += component_edges[i][2]>= -component_edges[i][1] #this is used for defining abselute value
             Lp_prob += component_edges[i][2]>= component_edges[i][1]
             # the following if is a condition for setting the limit on how much the CN can be changed for segment with length less than 1Mbp it is one
-            if calculate_seg_length(e) <= 1000000:
+            if calculate_seg_length(e, g) <= 1000000:
                 Lp_prob+= component_edges[i][2] <=1
             else: # for rest it is 25% of their length
                 Lp_prob += component_edges[i][2]<= math.ceil(e[2]/4)
@@ -373,12 +373,12 @@ def estimating_edge_multiplicities_in_CC(component, g, xmap):
                 if e[0][3] == 'S':
                     cond = cond + e[1] #summing tuning variable
                     Lp_prob += cond <= e[0][2] # this is important line wich we apply copy number balance condition
-                    if calculate_seg_length(e[0]) > 50000: # for segment less than 50 Kbp no penalty applied for tuning segment CN
+                    if calculate_seg_length(e[0], g) > 50000: # for segment less than 50 Kbp no penalty applied for tuning segment CN
                         cn_tune += e[2]
                     objective = objective + e[0][2] - e[0][1] #updating the Objective Function
         else:
             objective = objective + v_edges[0][0][2]
-            if calculate_seg_length(v_edges[0][0]) > 50000:# for segment less than 50 Kbp no penalty applied for tuning segment CN
+            if calculate_seg_length(v_edges[0][0], g) > 50000:# for segment less than 50 Kbp no penalty applied for tuning segment CN
                 cn_tune += v_edges[0][2]
     #Just for debug
     # print('obj', objective)
@@ -609,7 +609,7 @@ def detect_del_dup_cn(chromosome, start, end, segments): # this function detect 
 
 def detect_duplicatioon_inversion_cn(sv, xmap, segments): # same as above for duplication calls. 
     window_lim = 50000
-    node_dir1 , node_dir2 = detect_sv_directions(sv)
+    node_dir1 , node_dir2 = detect_sv_directions(sv, xmap)
     if node_dir1 == 'T' and node_dir2 == 'T': #right fold back
         for i,s in enumerate(segments):
             if int(s.chromosome) == int(sv.ref_c_id1): #only compared with the next contigs
@@ -628,8 +628,8 @@ def detect_receprical_translocation(sv, xmap, smap): #sometimes one of these rec
     for i in smap:
         if i.ref_c_id1 == sv.ref_c_id1 and i.ref_c_id2 == sv.ref_c_id2 and sv.smap_id != i.smap_id:
             if abs(i.ref_start - sv.ref_start) < window_lim and abs(i.ref_end - sv.ref_end) < window_lim:
-                i_dir1, i_dir2 = detect_sv_directions(i)
-                sv_dir1, sv_dir2 = detect_sv_directions(sv)
+                i_dir1, i_dir2 = detect_sv_directions(i, xmap)
+                sv_dir1, sv_dir2 = detect_sv_directions(sv, xmap)
                 if i_dir1 != sv_dir1 and i_dir2 != sv_dir2:
                     return True, i
     return False, None
@@ -891,7 +891,7 @@ for k in rcop.keys():
                 new_seg.int_cn = chrY_cn
             new_seg.bp = [start, end]
             segments.append(new_seg)
-            
+
 segments.sort(key=lambda x: (int(x.chromosome), x.start))
 
 for i in smap:

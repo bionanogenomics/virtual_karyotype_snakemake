@@ -28,7 +28,9 @@ rule all:
         expand("vk_results/{sample}/{sample}_results_ISCN.txt", sample=SAMPLES),
         expand("vk_results/{sample}/{sample}_custom_genome.txt", sample=SAMPLES),
         expand("vk_results/{sample}/{sample}_karyotype_rotated_split_1_of_2.pdf", sample=SAMPLES),
-        expand("vk_results/{sample}/{sample}_karyotype_rotated_split_2_of_2.pdf", sample=SAMPLES)
+        expand("vk_results/{sample}/{sample}_karyotype_rotated_split_2_of_2.pdf", sample=SAMPLES),
+        expand("vk_results/{sample}/exp_refineFinal1_merged.xmap", sample=SAMPLES),
+        "packaged_results/subset_postnatal_data.tar.gz",
 
 rule run_vk:
     input:
@@ -109,4 +111,40 @@ rule rotate_images:
     shell:
         """
         python scripts/rotate_ideogram.py --image1 {input.image1} --image2 {input.image2} --out1 {output[0]} --out2 {output[1]} &> {log}
+        """
+
+rule copy_data:
+    input:
+        cnv="samples/{sample}/cnv_calls_exp.txt",
+        smap="samples/{sample}/exp_refineFinal1_merged_filter_inversions.smap",
+        rcmap="samples/{sample}/cnv_rcmap_exp.txt",
+        xmap="samples/{sample}/exp_refineFinal1_merged.xmap"
+    log:
+        "logs/scripts/copy_data_{sample}.log"
+    params:
+        out_dir = lambda w: "vk_results/{sample}".format(sample=w.sample),
+    output:
+        "vk_results/{sample}/cnv_calls_exp.txt",
+        "vk_results/{sample}/exp_refineFinal1_merged_filter_inversions.smap",
+        "vk_results/{sample}/cnv_rcmap_exp.txt",
+        "vk_results/{sample}/exp_refineFinal1_merged.xmap"
+    shell:
+        """
+        cp {input.cnv} {params.out_dir}
+        cp {input.smap} {params.out_dir}
+        cp {input.rcmap} {params.out_dir}
+        cp {input.xmap} {params.out_dir}
+        """
+
+rule package_results:
+    input:
+        "vk_results",
+    log:
+        "logs/scripts/package_results.log"
+    output:
+        data_out="packaged_results/subset_postnatal_data.tar.gz",
+    shell:
+        """
+        mkdir -p packaged_results
+        tar -zcvf {output.data_out} {input}
         """
