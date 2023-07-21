@@ -27,10 +27,10 @@ rule all:
     input:  
         expand("vk_results/{sample}/{sample}_results_ISCN.txt", sample=SAMPLES),
         expand("vk_results/{sample}/{sample}_custom_genome.txt", sample=SAMPLES),
-        expand("vk_results/{sample}/{sample}_karyotype_rotated_split_1_of_2.pdf", sample=SAMPLES),
-        expand("vk_results/{sample}/{sample}_karyotype_rotated_split_2_of_2.pdf", sample=SAMPLES),
+        expand("vk_results/{sample}/{sample}_karyotype_rotated_split_4_of_4.pdf", sample=SAMPLES),
         expand("vk_results/{sample}/exp_refineFinal1_merged.xmap", sample=SAMPLES),
         "packaged_results/subset_postnatal_data.tar.gz",
+        expand("vk_results/{sample}/{sample}_karyotype_rotated_merged_image.pdf", sample=SAMPLES)
 
 rule run_vk:
     input:
@@ -78,7 +78,7 @@ rule generate_plotting_parameter_files:
 
 rule visualize_virtual_karyotype:
     input:
-        cytoband_out = "vk_results/{sample}/{sample}_custom_cytobands.txt",
+        cyto = "vk_results/{sample}/{sample}_custom_cytobands.txt",
         genome = "vk_results/{sample}/{sample}_custom_genome.txt",
         orientation = "vk_results/{sample}/{sample}_contig_orientation.txt",
         kprect = "vk_results/{sample}/{sample}_kprect_parameters.txt"
@@ -90,27 +90,50 @@ rule visualize_virtual_karyotype:
         "envs/karyoploter_env.yaml"
     output:
         "vk_results/{sample}/{sample}_processed.txt",
-        temp("vk_results/{sample}/{sample}_karyotype_split_1_of_2.pdf"),
-        temp("vk_results/{sample}/{sample}_karyotype_split_2_of_2.pdf")
+        temp("vk_results/{sample}/{sample}_karyotype_split_1_of_4.pdf"),
+        temp("vk_results/{sample}/{sample}_karyotype_split_2_of_4.pdf"),
+        temp("vk_results/{sample}/{sample}_karyotype_split_3_of_4.pdf"),
+        temp("vk_results/{sample}/{sample}_karyotype_split_4_of_4.pdf")
     shell:
         """
-        Rscript scripts/generate_ideogram.R {input.cytoband_out} {input.genome} {input.orientation} {input.kprect} {output[0]} {params.sample_handle} &> {log}
+        Rscript scripts/generate_ideogram.R {input.cyto} {input.genome} {input.orientation} {input.kprect} {output[0]} {params.sample_handle} &> {log}
         """
 
 rule rotate_images:
     input:
-        image1 = "vk_results/{sample}/{sample}_karyotype_split_1_of_2.pdf",
-        image2 = "vk_results/{sample}/{sample}_karyotype_split_2_of_2.pdf"
+        image1 = "vk_results/{sample}/{sample}_karyotype_split_1_of_4.pdf",
+        image2 = "vk_results/{sample}/{sample}_karyotype_split_2_of_4.pdf",
+        image3 = "vk_results/{sample}/{sample}_karyotype_split_3_of_4.pdf",
+        image4 = "vk_results/{sample}/{sample}_karyotype_split_4_of_4.pdf"
     log:
         "logs/scripts/rotate_images_{sample}.log"
     conda:
         "envs/pypdf_env.yaml"
     output:
-        "vk_results/{sample}/{sample}_karyotype_rotated_split_1_of_2.pdf",
-        "vk_results/{sample}/{sample}_karyotype_rotated_split_2_of_2.pdf"
+        "vk_results/{sample}/{sample}_karyotype_rotated_split_1_of_4.pdf",
+        "vk_results/{sample}/{sample}_karyotype_rotated_split_2_of_4.pdf",
+        "vk_results/{sample}/{sample}_karyotype_rotated_split_3_of_4.pdf",
+        "vk_results/{sample}/{sample}_karyotype_rotated_split_4_of_4.pdf"
     shell:
         """
-        python scripts/rotate_ideogram.py --image1 {input.image1} --image2 {input.image2} --out1 {output[0]} --out2 {output[1]} &> {log}
+        python scripts/rotate_ideogram.py --image1 {input.image1} --image2 {input.image2} --image3 {input.image3} --image4 {input.image4} --out1 {output[0]} --out2 {output[1]} --out3 {output[2]} --out4 {output[3]} &> {log}
+        """
+
+rule merge_images:
+    input:
+        image1="vk_results/{sample}/{sample}_karyotype_rotated_split_1_of_4.pdf",
+        image2="vk_results/{sample}/{sample}_karyotype_rotated_split_2_of_4.pdf",
+        image3="vk_results/{sample}/{sample}_karyotype_rotated_split_3_of_4.pdf",
+        image4="vk_results/{sample}/{sample}_karyotype_rotated_split_4_of_4.pdf"
+    log:
+        "logs/scripts/rotate_images_{sample}.log"
+    conda:
+        "envs/pypdf_env.yaml"
+    output:
+        "vk_results/{sample}/{sample}_karyotype_rotated_merged_image.pdf",
+    shell:
+        """
+        python scripts/merge_images.py --image1 {input.image1} --image2 {input.image2} --image3 {input.image3} --image4 {input.image4} --out1 {output[0]} &> {log}
         """
 
 rule copy_data:
