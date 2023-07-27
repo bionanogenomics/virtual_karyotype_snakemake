@@ -71,39 +71,39 @@ getChrHeight_2HorizDataAboveAndBelowIdeogram <- function(pp) {
 
 
 # Function to summarize data based on unique values in the 'chrom' column
-summarize_data_by_chrom <- function(coord_frame) {
-  # Find unique values in the 'chrom' column
-  unique_chrom_values <- unique(coord_frame$chrom)
+# summarize_data_by_chrom <- function(coord_frame, pp) {
+#   # Find unique values in the 'chrom' column
+#   unique_chrom_values <- unique(coord_frame$chrom)
   
-  # Initialize an empty data frame to store the summarized results
-  summary_df <- data.frame(chrom = character(),
-                           max_x = numeric(),
-                           avg_y_mid_norm_adj = numeric(),
-                           stringsAsFactors = FALSE)
-  max_x <- max(coord_frame$x) + .04
-  # Iterate through each unique 'chrom' value
-  for (chrom_val in unique_chrom_values) {
-    # Subset the data frame for the current 'chrom' value
-    subset_df <- coord_frame[coord_frame$chrom == chrom_val, ]
+#   # Initialize an empty data frame to store the summarized results
+#   summary_df <- data.frame(chrom = character(),
+#                            max_x = numeric(),
+#                            avg_y_mid_norm_adj = numeric(),
+#                            stringsAsFactors = FALSE)
+#   max_x <- max(coord_frame$x) + .04
+#   # Iterate through each unique 'chrom' value
+#   for (chrom_val in unique_chrom_values) {
+#     # Subset the data frame for the current 'chrom' value
+#     subset_df <- coord_frame[coord_frame$chrom == chrom_val, ]
     
-    # Set the 'max_x' value for all rows in the current 'chrom' group to the calculated maximum
-    subset_df$max_x <- max_x
+#     # Set the 'max_x' value for all rows in the current 'chrom' group to the calculated maximum
+#     subset_df$max_x <- max_x
     
-    # Calculate the average value of 'y_mid_norm_adj'
-    avg_y_mid_norm_adj <- mean(subset_df$y_mid_norm_adj)
+#     # Calculate the average value of 'y_mid_norm_adj'
+#     avg_y_mid_norm_adj <- mean(subset_df$y_mid_norm_adj)
     
-    # Create a new data frame with the 'chrom', 'max_x', and 'avg_y_mid_norm_adj' values for the current 'chrom' value
-    current_summary <- data.frame(chrom = chrom_val,
-                                  max_x = max_x,
-                                  avg_y_mid_norm_adj = avg_y_mid_norm_adj)
+#     # Create a new data frame with the 'chrom', 'max_x', and 'avg_y_mid_norm_adj' values for the current 'chrom' value
+#     current_summary <- data.frame(chrom = chrom_val,
+#                                   max_x = max_x,
+#                                   avg_y_mid_norm_adj = avg_y_mid_norm_adj)
     
-    # Append the current_summary to the summary_df
-    summary_df <- rbind(summary_df, current_summary)
-  }
-  summary_df$avg_y_mid_norm_adj <- calculate_values_df(coord_frame)
+#     # Append the current_summary to the summary_df
+#     summary_df <- rbind(summary_df, current_summary)
+#   }
+#   summary_df$avg_y_mid_norm_adj <- calculate_values_df_updated(coord_frame, pp)
   
-  return(summary_df)
-}
+#   return(summary_df)
+# }
 
 
 plot_kprects <- function(
@@ -229,10 +229,10 @@ plot_labels_by_chrom <- function(data_frame) {
     # Extract data for the current row
     chrom_value <- data_frame$chrom[i]
     max_x_value <- data_frame$max_x[i]
-    avg_y_mid_norm_adj_value <- data_frame$avg_y_mid_norm_adj[i]
+    yadj <- data_frame$yadj[i]
     
     # Create a scatter plot with text labels for the current row
-    text(x=max_x_value, y=avg_y_mid_norm_adj_value, labels = chrom_value, cex=5, srt=90, pos = 4, col = "blue")
+    text(x=max_x_value, y=yadj, labels = chrom_value, cex=5, srt=90, pos = 4, col = "blue")
   }
 }
 
@@ -386,10 +386,88 @@ calculate_values_df <- function(coord_frame) {
   return(result_df$value)
 }
 
-add_labels <- function(kp,cyto_first) {
+group_continuous <- function(df, group_column) {
+  # Generate helper vector that increments when group_column value changes
+  helper <- c(0, cumsum(as.numeric(diff(df[[group_column]])) != 0))
+
+  # Split the data frame based on the helper vector
+  split_df <- split(df, helper)
+
+  return(split_df)
+}
+
+# Function to calculate values and return a data frame
+calculate_coordinate_space <- function(coord_frame, pp) {
+      # Find unique values in the 'chrom' column
+   unique_chrom_values <- unlist(as.list(as.character(coord_frame$chrom)))
+   topmargin <- pp$topmargin
+   bottommargin <- pp$bottommargin
+   chrom_width <- calc_chrom_width(pp)
+
+   # Calculate the total number of entries in 'chrom'
+   total_entries <- nrow(coord_frame)
+
+      # Create an empty data frame to store the results
+   result_df <- data.frame(chrom = character(),
+                           yadj = numeric(),
+                           max_x = numeric(),
+                           stringsAsFactors = FALSE)
+
+   # Iterate through each unique value in 'chrom'
+   n_mult = length(unique_chrom_values)
+   n_total = length(unique_chrom_values)
+   total_width <- (chrom_width * n_total)
+   total_plot <- topmargin + bottommargin + total_width
+   off_set <- 0 
+   split_frames <- group_continuous(df=coord_frame,group_column='chrom')
+   max_x <- max(coord_frame$x) + .035
+   for (frame in split_frames) {
+      if(n_mult == n_total){
+      top_offset = topmargin # accounts for the top margin in first calculation
+      } else{
+      top_offset = 0
+      }
+      # Calculate the number of occurrences of the current chrom value
+      num_occurrences <- dim(frame)[[1]]
+
+      ind_chrom_width <- num_occurrences * chrom_width
+      middle_chrom_width <- ind_chrom_width/2
+      
+
+      # Create a new row for the result data frame
+      result_row <- data.frame(chrom = unique(frame$chrom),
+                              yadj = 1 - (middle_chrom_width + off_set)/total_plot,
+                              max_x = max_x,
+                              stringsAsFactors = FALSE)
+      off_set = off_set + ind_chrom_width + top_offset
+
+      # Add the result row to the result data frame
+      result_df <- rbind(result_df, result_row)
+   }
+
+   return(result_df)
+}
+
+
+# Function to calculate values and return a data frame
+calc_chrom_width <- function(pp) {
+  # Below needs to be calculated for number of paths in coord frame 
+  data1outmargin <- pp$data1outmargin 
+  data2outmargin <- pp$data2outmargin 
+  data1inmargin <- pp$data1inmargin
+  data2inmargin <- pp$data2inmargin 
+  ideogramheight <- pp$ideogramheight
+  data1height <- pp$data1height
+  data2height <- pp$data1height
+
+  chrom_width <- data1outmargin + data2outmargin + data1inmargin + data2inmargin + ideogramheight + data1height + data2height
+  return(chrom_width)
+}
+
+add_labels <- function(kp,cyto_first,pp) {
    coord_frame <- get_coords(kp,cyto_first)
    coord_frame$chrom <- droplevels(coord_frame$chrom)
-   chrom_coords<- summarize_data_by_chrom(coord_frame)
+   chrom_coords<-calculate_coordinate_space(coord_frame,pp)
    plot_labels_by_chrom(chrom_coords)   
 }
 
@@ -406,7 +484,7 @@ for(i in names(genome_split)){
    sub_kprect = kprect_split[i][[1]]
    plot_total_ideogram(i, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper, kp)
 }
-add_labels(kp, cyto_first)
+add_labels(kp, cyto_first, pp)
 dev.off()
 
 fig_out = paste(sample_handle, 'karyotype_split_2_of_4', '.pdf',sep='')
@@ -422,6 +500,7 @@ for(i in names(genome_split)){
    sub_kprect = kprect_split[i][[1]]
    plot_total_ideogram(i, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper, kp)
 }
+add_labels(kp, cyto_first, pp)
 dev.off()
 
 fig_out = paste(sample_handle, 'karyotype_split_3_of_4', '.pdf',sep='')
@@ -437,6 +516,7 @@ for(i in names(genome_split)){
    sub_kprect = kprect_split[i][[1]]
    plot_total_ideogram(i, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper, kp)
 }
+add_labels(kp, cyto_first, pp)
 dev.off()
 
 fig_out = paste(sample_handle, 'karyotype_split_4_of_4', '.pdf',sep='')
@@ -452,6 +532,7 @@ for(i in names(genome_split)){
    sub_kprect = kprect_split[i][[1]]
    plot_total_ideogram(i, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper, kp)
 }
+add_labels(kp, cyto_first, pp)
 dev.off()
 
 
