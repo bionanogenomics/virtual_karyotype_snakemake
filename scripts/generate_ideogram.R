@@ -70,41 +70,6 @@ getChrHeight_2HorizDataAboveAndBelowIdeogram <- function(pp) {
 }
 
 
-# Function to summarize data based on unique values in the 'chrom' column
-# summarize_data_by_chrom <- function(coord_frame, pp) {
-#   # Find unique values in the 'chrom' column
-#   unique_chrom_values <- unique(coord_frame$chrom)
-  
-#   # Initialize an empty data frame to store the summarized results
-#   summary_df <- data.frame(chrom = character(),
-#                            max_x = numeric(),
-#                            avg_y_mid_norm_adj = numeric(),
-#                            stringsAsFactors = FALSE)
-#   max_x <- max(coord_frame$x) + .04
-#   # Iterate through each unique 'chrom' value
-#   for (chrom_val in unique_chrom_values) {
-#     # Subset the data frame for the current 'chrom' value
-#     subset_df <- coord_frame[coord_frame$chrom == chrom_val, ]
-    
-#     # Set the 'max_x' value for all rows in the current 'chrom' group to the calculated maximum
-#     subset_df$max_x <- max_x
-    
-#     # Calculate the average value of 'y_mid_norm_adj'
-#     avg_y_mid_norm_adj <- mean(subset_df$y_mid_norm_adj)
-    
-#     # Create a new data frame with the 'chrom', 'max_x', and 'avg_y_mid_norm_adj' values for the current 'chrom' value
-#     current_summary <- data.frame(chrom = chrom_val,
-#                                   max_x = max_x,
-#                                   avg_y_mid_norm_adj = avg_y_mid_norm_adj)
-    
-#     # Append the current_summary to the summary_df
-#     summary_df <- rbind(summary_df, current_summary)
-#   }
-#   summary_df$avg_y_mid_norm_adj <- calculate_values_df_updated(coord_frame, pp)
-  
-#   return(summary_df)
-# }
-
 
 plot_kprects <- function(
    sub_kprect, path, color_mapper, kp
@@ -152,7 +117,7 @@ plot_orientation <- function(
    x0 = as.numeric(sub_orientation[2])
    x1 = as.numeric(sub_orientation[3])
    col = sub_orientation[20]
-   kpArrows(kp, chr=path, x0=x0, x1=x1, y0=0.5, y1=0.5, data.panel=2, lwd=1, length=0.05, angle=20, col=col)
+   kpArrows(kp, chr=path, x0=x0, x1=x1, y0=0.5, y1=0.5, data.panel=2, lwd=1, angle=20, col=col, length=0.5)
 }
 
 plot_ideogram <- function(
@@ -236,103 +201,27 @@ plot_labels_by_chrom <- function(data_frame) {
   }
 }
 
-pp <- getDefaultPlotParams(plot.type=2)
-pp$leftmargin <- 0.3
-pp$data2height <- 30
-
-color_mapper <- mapColors(unique(custom.cytobands$chrom))
-genome_split = split(custom.genome,custom.genome@seqnames)
-cytoband_split = split(custom.cytobands, custom.cytobands@seqnames)
-orientation_split = split(orientation_frame, orientation_frame$chr)
-kprect_split = split(kprect_frame, kprect_frame$chr)
-for(i in names(genome_split)){
-   path_handle = strsplit(i, " ")[[1]][1]
-   fig_out = paste(sample_handle, path_handle, '.pdf',sep='')
-   sub_cytoband <- custom.cytobands[custom.cytobands@seqnames==i]
-   sub_genome <- custom.genome[custom.genome@seqnames==i] 
-   sub_orientation = orientation_split[i][[1]]
-   sub_kprect = kprect_split[i][[1]]
-   plot_ideogram(i, fig_out, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper)
+add_kp_labels <- function(karyoplot, chr.names=NULL, xoffset=0, yoffset=-30, ...) {
+  #Validate parameters
+  if(!methods::is(karyoplot, "KaryoPlot")) stop("'karyoplot' must be a valid 'KaryoPlot' object")
+  
+  if(is.null(chr.names)) chr.names <- karyoplot$chromosomes
+  if(length(chr.names)==0) stop("In kpAddChromosomeNames: chr.names must have at least one element.")
+  if(!all(methods::is(chr.names, "character"))) stop("In kpAddChromosomeNames: all elements of chr.names must be characters.")
+  #Begin plotting
+  karyoplot$beginKpPlot()
+  on.exit(karyoplot$endKpPlot())
+  bb <- getChromosomeNamesBoundingBox(karyoplot)  
+  x <- (bb$x0+bb$x1)/2 + xoffset
+  y <- (bb$y0+bb$y1)/2 + yoffset
+  for (name in names(x)) {
+    if (grepl("dic|der|\\(t\\(", name)) {
+      text(x = 0.29, y = y[[name]], label = "*", cex=20, srt=90, pos=4, col='red')
+    }
+  invisible(karyoplot)
+  }
 }
 
-################
-pp <- getDefaultPlotParams(plot.type=2)
-pp$leftmargin <- 0.3
-pp$data2height <- 100
-pp$ideogramheight <- 550 
-pp$dataideogrammin <- -.75
-pp$dataideogrammax <- .75
-pp$data2inmargin <- 20
-pp$data1inmargin <- 20
-pp$data1height <- 300
-pp$tick.len <- 30
-pp$data1outmargin <- 20
-pp$data2outmargin <- 20
-pp$data1max=1
-pp$data1min=0
-pp$bottommargin = 30
-pp$topmargin = 30
-
-cyto <- data.frame(custom.cytobands)
-sub_cyto <- cyto[c('seqnames','chrom')]
-non_dup <- sub_cyto[!duplicated(sub_cyto),]
-chromosomes <- non_dup$seqnames[!duplicated(non_dup$seqnames)]
-chrom_order <- rev(as.character(chromosomes))
-chrom_split_order <- chunk.2(chrom_order, 2, force.number.of.groups=T)
-seqlevels(custom.genome) <- chrom_order
-custom.genome <- sort(custom.genome)
-seqlevels(custom.cytobands,) <- chrom_order
-levels(custom.genome@seqnames) <- chrom_order
-levels(custom.cytobands@seqnames) <- chrom_order
-
-contig_split <- round(length(chrom_order)/2)
-
-chrom_split_order <- chunk.2(chrom_order, 2, force.number.of.groups=T)
-
-genome_part_1 <- custom.genome[seqnames(custom.genome) %in% chrom_split_order$`2`]
-cytoband_part_1 <- subsetByOverlaps(custom.cytobands,genome_part_1)
-seqlevels(genome_part_1) <- seqlevelsInUse(genome_part_1)
-levels(genome_part_1) <- seqlevels(genome_part_1)
-seqlevels(cytoband_part_1) <- seqlevelsInUse(cytoband_part_1)
-levels(cytoband_part_1) <- seqlevels(cytoband_part_1)
-
-
-
-cyto_first <- get_first_rows_per_seqnames(sub_cyto)
-
-part1_5 <- droplevels(unique(cyto_first[cyto_first$chrom %in% c(1,2,3,4,5),]$seqnames))
-part6_12 <- droplevels(unique(cyto_first[cyto_first$chrom %in% c(6,7,8,9,10,11,12),]$seqnames))
-part13_18 <- droplevels(unique(cyto_first[cyto_first$chrom %in% c(13,14,15,16,17,18),]$seqnames))
-part19_Y <- droplevels(unique(cyto_first[cyto_first$chrom %in% c(19,20,21,22,'X','Y'),]$seqnames))
-
-
-genome_part1_5 <- custom.genome[seqnames(custom.genome) %in% part1_5]
-cytoband_part1_5 <- subsetByOverlaps(custom.cytobands,genome_part1_5)
-seqlevels(genome_part1_5) <- seqlevelsInUse(genome_part1_5)
-levels(genome_part1_5) <- seqlevels(genome_part1_5)
-seqlevels(cytoband_part1_5) <- seqlevelsInUse(cytoband_part1_5)
-levels(cytoband_part1_5) <- seqlevels(cytoband_part1_5)
-
-genome_part6_12 <- custom.genome[seqnames(custom.genome) %in% part6_12]
-cytoband_part6_12 <- subsetByOverlaps(custom.cytobands,genome_part6_12)
-seqlevels(genome_part6_12) <- seqlevelsInUse(genome_part6_12)
-levels(genome_part6_12) <- seqlevels(genome_part6_12)
-seqlevels(cytoband_part6_12) <- seqlevelsInUse(cytoband_part6_12)
-levels(cytoband_part6_12) <- seqlevels(cytoband_part6_12)
-
-genome_part13_18 <- custom.genome[seqnames(custom.genome) %in% part13_18]
-cytoband_part13_18 <- subsetByOverlaps(custom.cytobands,genome_part13_18)
-seqlevels(genome_part13_18) <- seqlevelsInUse(genome_part13_18)
-levels(genome_part13_18) <- seqlevels(genome_part13_18)
-seqlevels(cytoband_part13_18) <- seqlevelsInUse(cytoband_part13_18)
-levels(cytoband_part13_18) <- seqlevels(cytoband_part13_18)
-
-genome_part19_Y <- custom.genome[seqnames(custom.genome) %in% part19_Y]
-cytoband_part19_Y <- subsetByOverlaps(custom.cytobands,genome_part19_Y)
-seqlevels(genome_part19_Y) <- seqlevelsInUse(genome_part19_Y)
-levels(genome_part19_Y) <- seqlevels(genome_part19_Y)
-seqlevels(cytoband_part19_Y) <- seqlevelsInUse(cytoband_part19_Y)
-levels(cytoband_part19_Y) <- seqlevels(cytoband_part19_Y)
 
 # Function to calculate descending values from 1.0 (exclusive) based on the number of unique entries in 'chrom'
 calculate_descending_values <- function(coord_frame) {
@@ -448,8 +337,6 @@ calculate_coordinate_space <- function(coord_frame, pp) {
    return(result_df)
 }
 
-
-# Function to calculate values and return a data frame
 calc_chrom_width <- function(pp) {
   # Below needs to be calculated for number of paths in coord frame 
   data1outmargin <- pp$data1outmargin 
@@ -458,7 +345,7 @@ calc_chrom_width <- function(pp) {
   data2inmargin <- pp$data2inmargin 
   ideogramheight <- pp$ideogramheight
   data1height <- pp$data1height
-  data2height <- pp$data1height
+  data2height <- pp$data2height
 
   chrom_width <- data1outmargin + data2outmargin + data1inmargin + data2inmargin + ideogramheight + data1height + data2height
   return(chrom_width)
@@ -471,11 +358,165 @@ add_labels <- function(kp,cyto_first,pp) {
    plot_labels_by_chrom(chrom_coords)   
 }
 
+pp <- getDefaultPlotParams(plot.type=2)
+pp$leftmargin <- 0.3
+pp$data2height <- 30
+
+color_mapper <- mapColors(unique(custom.cytobands$chrom))
+genome_split = split(custom.genome,custom.genome@seqnames)
+cytoband_split = split(custom.cytobands, custom.cytobands@seqnames)
+orientation_split = split(orientation_frame, orientation_frame$chr)
+kprect_split = split(kprect_frame, kprect_frame$chr)
+for(i in names(genome_split)){
+   path_handle = strsplit(i, " ")[[1]][1]
+   fig_out = paste(sample_handle, path_handle, '.pdf',sep='')
+   sub_cytoband <- custom.cytobands[custom.cytobands@seqnames==i]
+   sub_genome <- custom.genome[custom.genome@seqnames==i] 
+   sub_orientation = orientation_split[i][[1]]
+   sub_kprect = kprect_split[i][[1]]
+   plot_ideogram(i, fig_out, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper)
+}
+
+################
+pp <- getDefaultPlotParams(plot.type=2)
+pp$leftmargin <- 0.3
+pp$data2height <- 100
+pp$ideogramheight <- 150 
+pp$dataideogrammin <- -1
+pp$dataideogrammax <- 1
+pp$data2inmargin <- 20
+pp$data1inmargin <- 20
+pp$data1height <- 100
+pp$tick.len <- 30
+pp$data1outmargin <- 20
+pp$data2outmargin <- 20
+pp$data1max=1
+pp$data1min=0
+pp$bottommargin = 30
+pp$topmargin = 30
+
+cyto <- data.frame(custom.cytobands)
+sub_cyto <- cyto[c('seqnames','chrom')]
+non_dup <- sub_cyto[!duplicated(sub_cyto),]
+chromosomes <- non_dup$seqnames[!duplicated(non_dup$seqnames)]
+chrom_order <- rev(as.character(chromosomes))
+chrom_split_order <- chunk.2(chrom_order, 2, force.number.of.groups=T)
+seqlevels(custom.genome) <- chrom_order
+custom.genome <- sort(custom.genome)
+seqlevels(custom.cytobands,) <- chrom_order
+levels(custom.genome@seqnames) <- chrom_order
+levels(custom.cytobands@seqnames) <- chrom_order
+
+contig_split <- round(length(chrom_order)/2)
+
+chrom_split_order <- chunk.2(chrom_order, 2, force.number.of.groups=T)
+
+genome_part_1 <- custom.genome[seqnames(custom.genome) %in% chrom_split_order$`2`]
+cytoband_part_1 <- subsetByOverlaps(custom.cytobands,genome_part_1)
+seqlevels(genome_part_1) <- seqlevelsInUse(genome_part_1)
+levels(genome_part_1) <- seqlevels(genome_part_1)
+seqlevels(cytoband_part_1) <- seqlevelsInUse(cytoband_part_1)
+levels(cytoband_part_1) <- seqlevels(cytoband_part_1)
+
+
+
+cyto_first <- get_first_rows_per_seqnames(sub_cyto)
+
+part1_5 <- droplevels(unique(cyto_first[cyto_first$chrom %in% c(1,2,3,4,5),]$seqnames))
+part6_12 <- droplevels(unique(cyto_first[cyto_first$chrom %in% c(6,7,8,9,10,11,12),]$seqnames))
+part13_18 <- droplevels(unique(cyto_first[cyto_first$chrom %in% c(13,14,15,16,17,18),]$seqnames))
+part19_Y <- droplevels(unique(cyto_first[cyto_first$chrom %in% c(19,20,21,22,'X','Y'),]$seqnames))
+
+
+genome_part1_5 <- custom.genome[seqnames(custom.genome) %in% part1_5]
+cytoband_part1_5 <- subsetByOverlaps(custom.cytobands,genome_part1_5)
+seqlevels(genome_part1_5) <- seqlevelsInUse(genome_part1_5)
+levels(genome_part1_5) <- seqlevels(genome_part1_5)
+seqlevels(cytoband_part1_5) <- seqlevelsInUse(cytoband_part1_5)
+levels(cytoband_part1_5) <- seqlevels(cytoband_part1_5)
+
+genome_part6_12 <- custom.genome[seqnames(custom.genome) %in% part6_12]
+cytoband_part6_12 <- subsetByOverlaps(custom.cytobands,genome_part6_12)
+seqlevels(genome_part6_12) <- seqlevelsInUse(genome_part6_12)
+levels(genome_part6_12) <- seqlevels(genome_part6_12)
+seqlevels(cytoband_part6_12) <- seqlevelsInUse(cytoband_part6_12)
+levels(cytoband_part6_12) <- seqlevels(cytoband_part6_12)
+
+genome_part13_18 <- custom.genome[seqnames(custom.genome) %in% part13_18]
+cytoband_part13_18 <- subsetByOverlaps(custom.cytobands,genome_part13_18)
+seqlevels(genome_part13_18) <- seqlevelsInUse(genome_part13_18)
+levels(genome_part13_18) <- seqlevels(genome_part13_18)
+seqlevels(cytoband_part13_18) <- seqlevelsInUse(cytoband_part13_18)
+levels(cytoband_part13_18) <- seqlevels(cytoband_part13_18)
+
+genome_part19_Y <- custom.genome[seqnames(custom.genome) %in% part19_Y]
+cytoband_part19_Y <- subsetByOverlaps(custom.cytobands,genome_part19_Y)
+seqlevels(genome_part19_Y) <- seqlevelsInUse(genome_part19_Y)
+levels(genome_part19_Y) <- seqlevels(genome_part19_Y)
+seqlevels(cytoband_part19_Y) <- seqlevelsInUse(cytoband_part19_Y)
+levels(cytoband_part19_Y) <- seqlevels(cytoband_part19_Y)
+
+
+
+# ##### TEST to find center of chrom ####
+# # Function to calculate values and return a data frame
+# calculate_coordinate_space_all <- function(coord_frame, pp) {
+#       # Find unique values in the 'chrom' column
+#    unique_chrom_values <- unlist(as.list(as.character(coord_frame$chrom)))
+#    topmargin <- pp$topmargin
+#    bottommargin <- pp$bottommargin
+#    chrom_width <- calc_chrom_width(pp)
+
+#    # Calculate the total number of entries in 'chrom'
+#    total_entries <- nrow(coord_frame)
+
+#       # Create an empty data frame to store the results
+#    result_df <- data.frame(chrom = character(),
+#                            yadj = numeric(),
+#                            max_x = numeric(),
+#                            stringsAsFactors = FALSE)
+
+#    # Iterate through each unique value in 'chrom'
+#    n_mult = length(unique_chrom_values)
+#    n_total = length(unique_chrom_values)
+#    total_width <- (chrom_width * n_total)
+#    total_plot <- topmargin + bottommargin + total_width
+#    off_set <- 0 
+#    max_x <- max(coord_frame$x) + .035
+#    for (i in 1:nrow(coord_frame)) {
+#       if(n_mult == n_total){
+#       top_offset = topmargin # accounts for the top margin in first calculation
+#       } else{
+#       top_offset = 0
+#       }
+#       # Calculate the number of occurrences of the current chrom value
+
+#       ind_chrom_width <- chrom_width
+#       middle_chrom_width <- ind_chrom_width/2
+      
+
+#       # Create a new row for the result data frame
+#       result_row <- data.frame(chrom = unique(coord_frame[i,]$chrom),
+#                               yadj = 1 - (middle_chrom_width + off_set)/total_plot,
+#                               max_x = max_x,
+#                               stringsAsFactors = FALSE)
+#       off_set = off_set + ind_chrom_width + top_offset
+
+#       # Add the result row to the result data frame
+#       result_df <- rbind(result_df, result_row)
+#    }
+
+#    return(result_df)
+# }
+
+
 fig_out = paste(sample_handle, 'karyotype_split_1_of_4', '.pdf',sep='')
 pdf(fig_out, width=15,height=40,pointsize=1)
 genome_split = split(genome_part1_5,genome_part1_5@seqnames)
 kp <- plotKaryotype(chromosomes=levels(genome_part1_5@seqnames), genome=genome_part1_5, plot.type=2, cytobands=cytoband_part1_5, plot.params=pp, lwd=0.1, cex=3.5)
-kpAddBaseNumbers(kp,cex=.8)
+# kpAddBaseNumbers(kp,cex=.8)
+kpAddBaseNumbers(kp, tick.dist = 10000000, tick.len = 10, tick.col="red", cex=1,
+                 minor.tick.dist = 1000000, minor.tick.len = 5, minor.tick.col = "gray")
 kpAddCytobandLabels(kp, srt=90, col='#2C02FD', cex=1.5, force.all=TRUE)
 for(i in names(genome_split)){
    sub_cytoband <- cytoband_part1_5[cytoband_part1_5@seqnames==i]
@@ -485,13 +526,16 @@ for(i in names(genome_split)){
    plot_total_ideogram(i, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper, kp)
 }
 add_labels(kp, cyto_first, pp)
+add_kp_labels(kp)
 dev.off()
 
 fig_out = paste(sample_handle, 'karyotype_split_2_of_4', '.pdf',sep='')
 pdf(fig_out, width=15,height=40,pointsize=1)
 genome_split = split(genome_part6_12,genome_part6_12@seqnames)
 kp <- plotKaryotype(chromosomes=levels(genome_part6_12@seqnames), genome=genome_part6_12, plot.type=2, cytobands=cytoband_part6_12, plot.params=pp, lwd=0.1, cex=3.5)
-kpAddBaseNumbers(kp,cex=.8)
+# kpAddBaseNumbers(kp,cex=.8)
+kpAddBaseNumbers(kp, tick.dist = 10000000, tick.len = 10, tick.col="red", cex=1,
+                 minor.tick.dist = 1000000, minor.tick.len = 5, minor.tick.col = "gray")
 kpAddCytobandLabels(kp, srt=90, col='#2C02FD', cex=1.5, force.all=TRUE)
 for(i in names(genome_split)){
    sub_cytoband <- cytoband_part6_12[cytoband_part6_12@seqnames==i]
@@ -501,13 +545,16 @@ for(i in names(genome_split)){
    plot_total_ideogram(i, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper, kp)
 }
 add_labels(kp, cyto_first, pp)
+add_kp_labels(kp)
 dev.off()
 
 fig_out = paste(sample_handle, 'karyotype_split_3_of_4', '.pdf',sep='')
 pdf(fig_out, width=15,height=40,pointsize=1)
 genome_split = split(genome_part13_18,genome_part13_18@seqnames)
 kp <- plotKaryotype(chromosomes=levels(genome_part13_18@seqnames), genome=genome_part13_18, plot.type=2, cytobands=cytoband_part13_18, plot.params=pp, lwd=0.1, cex=3.5)
-kpAddBaseNumbers(kp,cex=.8)
+# kpAddBaseNumbers(kp,cex=.8)
+kpAddBaseNumbers(kp, tick.dist = 10000000, tick.len = 10, tick.col="red", cex=1,
+                 minor.tick.dist = 1000000, minor.tick.len = 5, minor.tick.col = "gray")
 kpAddCytobandLabels(kp, srt=90, col='#2C02FD', cex=1.5, force.all=TRUE)
 for(i in names(genome_split)){
    sub_cytoband <- cytoband_part13_18[cytoband_part13_18@seqnames==i]
@@ -517,13 +564,16 @@ for(i in names(genome_split)){
    plot_total_ideogram(i, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper, kp)
 }
 add_labels(kp, cyto_first, pp)
+add_kp_labels(kp)
 dev.off()
 
 fig_out = paste(sample_handle, 'karyotype_split_4_of_4', '.pdf',sep='')
 pdf(fig_out, width=15,height=40,pointsize=1)
 genome_split = split(genome_part19_Y,genome_part19_Y@seqnames)
 kp <- plotKaryotype(chromosomes=levels(genome_part19_Y@seqnames), genome=genome_part19_Y, plot.type=2, cytobands=cytoband_part19_Y, plot.params=pp, lwd=0.1, cex=3.5)
-kpAddBaseNumbers(kp,cex=.8)
+# kpAddBaseNumbers(kp,cex=.8)
+kpAddBaseNumbers(kp, tick.dist = 10000000, tick.len = 10, tick.col="red", cex=1,
+                 minor.tick.dist = 1000000, minor.tick.len = 5, minor.tick.col = "gray")
 kpAddCytobandLabels(kp, srt=90, col='#2C02FD', cex=1.5, force.all=TRUE)
 for(i in names(genome_split)){
    sub_cytoband <- cytoband_part19_Y[cytoband_part19_Y@seqnames==i]
@@ -533,47 +583,8 @@ for(i in names(genome_split)){
    plot_total_ideogram(i, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper, kp)
 }
 add_labels(kp, cyto_first, pp)
+add_kp_labels(kp)
 dev.off()
-
-
-# ###################
-# fig_out = paste('test_final_applied_v5_', 'karyotype_split_1_of_2', '.pdf',sep='')
-# pdf(fig_out, width=15,height=40,pointsize=1)
-# genome_split = split(genome_part_1,genome_part_1@seqnames)
-# kp <- plotKaryotype(chromosomes=chrom_split_order$`2`, genome=genome_part_1, plot.type=2, cytobands=cytoband_part_1, plot.params=pp, lwd=0.1, cex=3.5)
-# kpAddBaseNumbers(kp,cex=.8)
-# kpAddCytobandLabels(kp, srt=90, col='#2C02FD', cex=1.5, force.all=TRUE)
-# for(i in names(genome_split)){
-#    sub_cytoband <- cytoband_part_1[cytoband_part_1@seqnames==i]
-#    sub_genome <- genome_part_1[genome_part_1@seqnames==i] 
-#    sub_orientation = orientation_split[i][[1]]
-#    sub_kprect = kprect_split[i][[1]]
-#    plot_total_ideogram(i, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper, kp)
-# }
-# dev.off()
-
-
-# genome_part_2 <- custom.genome[seqnames(custom.genome) %in% chrom_split_order$`1`]
-# cytoband_part_2 <- subsetByOverlaps(custom.cytobands,genome_part_2)
-# seqlevels(genome_part_2) <- seqlevelsInUse(genome_part_2)
-# levels(genome_part_2) <- seqlevels(genome_part_2)
-# seqlevels(cytoband_part_2) <- seqlevelsInUse(cytoband_part_2)
-# levels(cytoband_part_2) <- seqlevels(cytoband_part_2)
-
-# fig_out = paste(sample_handle, 'karyotype_split_2_of_2', '.pdf',sep='')
-# pdf(fig_out, width=15,height=40,pointsize=1)
-# genome_split = split(genome_part_2,genome_part_2@seqnames)
-# kp <- plotKaryotype(chromosomes=chrom_split_order$`1`, genome=genome_part_2, plot.type=2, cytobands=cytoband_part_2, plot.params=pp, cex=3.5)
-# kpAddBaseNumbers(kp,cex=.8)
-# kpAddCytobandLabels(kp, srt=90, col='#2C02FD', cex=1.5, force.all=TRUE)
-# for(i in names(genome_split)){
-#    sub_cytoband <- cytoband_part_2[cytoband_part_2@seqnames==i]
-#    sub_genome <- genome_part_2[genome_part_2@seqnames==i] 
-#    sub_orientation = orientation_split[i][[1]]
-#    sub_kprect = kprect_split[i][[1]]
-#    plot_total_ideogram(i, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper, kp)
-# }
-# dev.off()
 
 
 x <- data.frame()

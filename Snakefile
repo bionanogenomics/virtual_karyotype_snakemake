@@ -28,9 +28,10 @@ rule all:
         expand("vk_results/{sample}/{sample}_results_ISCN.txt", sample=SAMPLES),
         expand("vk_results/{sample}/{sample}_custom_genome.txt", sample=SAMPLES),
         expand("vk_results/{sample}/{sample}_karyotype_rotated_split_4_of_4.pdf", sample=SAMPLES),
-        expand("vk_results/{sample}/exp_refineFinal1_merged.xmap", sample=SAMPLES),
-        "packaged_results/subset_postnatal_data.tar.gz",
-        expand("vk_results/{sample}/{sample}_karyotype_rotated_merged_image.pdf", sample=SAMPLES)
+        #expand("vk_results/{sample}/exp_refineFinal1_merged.xmap", sample=SAMPLES),
+        expand("vk_results/{sample}/{sample}_karyotype_rotated_merged_image.pdf", sample=SAMPLES),
+        expand("packaged_data/{sample}/exp_refineFinal1_merged.xmap",sample=SAMPLES),
+        "packaged_results/subset_postnatal_data_updated.tar.gz",
 
 rule run_vk:
     input:
@@ -145,14 +146,16 @@ rule copy_data:
     log:
         "logs/scripts/copy_data_{sample}.log"
     params:
-        out_dir = lambda w: "vk_results/{sample}".format(sample=w.sample),
+        out_dir = lambda w: "packaged_data/{sample}".format(sample=w.sample),
     output:
-        "vk_results/{sample}/cnv_calls_exp.txt",
-        "vk_results/{sample}/exp_refineFinal1_merged_filter_inversions.smap",
-        "vk_results/{sample}/cnv_rcmap_exp.txt",
-        "vk_results/{sample}/exp_refineFinal1_merged.xmap"
+        "packaged_data/{sample}/cnv_calls_exp.txt",
+        "packaged_data/{sample}/exp_refineFinal1_merged_filter_inversions.smap",
+        "packaged_data/{sample}/cnv_rcmap_exp.txt",
+        "packaged_data/{sample}/exp_refineFinal1_merged.xmap"
     shell:
         """
+        mkdir -p packaged_data
+        mkdir -p {params.out_dir}
         cp {input.cnv} {params.out_dir}
         cp {input.smap} {params.out_dir}
         cp {input.rcmap} {params.out_dir}
@@ -161,11 +164,11 @@ rule copy_data:
 
 rule package_results:
     input:
-        "vk_results",
+        "packaged_data/",
     log:
         "logs/scripts/package_results.log"
     output:
-        data_out="packaged_results/subset_postnatal_data.tar.gz",
+        data_out="packaged_results/subset_postnatal_data_updated.tar.gz",
     shell:
         """
         mkdir -p packaged_results
