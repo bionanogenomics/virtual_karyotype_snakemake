@@ -18,7 +18,8 @@ cytoband:
   /home/jestabrook/analyses/simulation_workflow/resources/cytoBand.txt
 
 resolved_cytoband:
-  /home/jestabrook/analyses/simulation_workflow/resources/hg38_400_level_cytoband_updated.tsv
+  /home/jestabrook/analyses/virtual_karyotype_postnatal_subset/resources/hg38_800_cytoband_updated.tsv
+# /home/jestabrook/analyses/simulation_workflow/resources/hg38_400_level_cytoband_updated.tsv
 
 aws_access_key_id:
   AKIA52DICWU3K52VN56N

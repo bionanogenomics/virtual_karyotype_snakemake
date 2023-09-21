@@ -52,15 +52,18 @@ rule run_vk:
     output:
         "vk_results/{sample}/{sample}_results.png",
         "vk_results/{sample}/{sample}_results.txt",
-        "vk_results/{sample}/{sample}_results_ISCN.txt"
+        "vk_results/{sample}/{sample}_results_ISCN.txt",
+        "vk_results/{sample}/{sample}_smap_segments.txt",
     shell:
         """
-        python scripts/virtual_karyotype.py --cnv {input.cnv} --smap {input.smap} --rcmap {input.rcmap} --xmap {input.xmap} --centro {params.centro} --cyto {params.cyto} -n {wildcards.sample}_results -o {params.out_dir} &> {log}
+        python scripts/virtual_karyotype.py --cnv {input.cnv} --smap {input.smap} --rcmap {input.rcmap} --xmap {input.xmap} --centro {params.centro} --cyto {params.cyto} -n {wildcards.sample}_results -o {params.out_dir} --sv_output {output[3]} &> {log}
         """
 
 rule generate_plotting_parameter_files:
     input:
-        "vk_results/{sample}/{sample}_results_ISCN.txt"
+        "vk_results/{sample}/{sample}_results_ISCN.txt",
+        "vk_results/{sample}/{sample}_smap_segments.txt",
+        "vk_results/{sample}/{sample}_results.txt"
     log:
         "logs/scripts/generate_plotting_parameter_files_{sample}.log"
     conda:
@@ -71,10 +74,11 @@ rule generate_plotting_parameter_files:
         cytoband_out = "vk_results/{sample}/{sample}_custom_cytobands.txt",
         genome = "vk_results/{sample}/{sample}_custom_genome.txt",
         orientation = "vk_results/{sample}/{sample}_contig_orientation.txt",
-        kprect = "vk_results/{sample}/{sample}_kprect_parameters.txt"
+        kprect = "vk_results/{sample}/{sample}_kprect_parameters.txt",
+        svlabel_frame_out = "vk_results/{sample}/{sample}_svlabel_frame.txt"
     shell:
         """
-        python scripts/format_results.py --iscn_format {input} --cytoband {params.cyto} --cytobands_out {output.cytoband_out} --genome_out {output.genome} --contig_orientation_out {output.orientation} --kprect_out {output.kprect} &> {log}
+        python scripts/format_results.py --iscn_format {input[0]} --smap_segments {input[1]} --vk_results {input[2]} --cytoband {params.cyto} --cytobands_out {output.cytoband_out} --genome_out {output.genome} --contig_orientation_out {output.orientation} --kprect_out {output.kprect} --svlabel_frame_out {output.svlabel_frame_out} &> {log}
         """
 
 rule visualize_virtual_karyotype:
@@ -82,7 +86,8 @@ rule visualize_virtual_karyotype:
         cyto = "vk_results/{sample}/{sample}_custom_cytobands.txt",
         genome = "vk_results/{sample}/{sample}_custom_genome.txt",
         orientation = "vk_results/{sample}/{sample}_contig_orientation.txt",
-        kprect = "vk_results/{sample}/{sample}_kprect_parameters.txt"
+        kprect = "vk_results/{sample}/{sample}_kprect_parameters.txt",
+        svlabel_frame = "vk_results/{sample}/{sample}_svlabel_frame.txt"
     log:
         "logs/scripts/visualize_virtual_karyotype{sample}.log"
     params:
@@ -97,7 +102,7 @@ rule visualize_virtual_karyotype:
         temp("vk_results/{sample}/{sample}_karyotype_split_4_of_4.pdf")
     shell:
         """
-        Rscript scripts/generate_ideogram.R {input.cyto} {input.genome} {input.orientation} {input.kprect} {output[0]} {params.sample_handle} &> {log}
+        Rscript scripts/generate_ideogram.R {input.cyto} {input.genome} {input.orientation} {input.kprect} {output[0]} {params.sample_handle} {input.svlabel_frame} &> {log}
         """
 
 rule rotate_images:

@@ -6,14 +6,24 @@ orientation <- args[3]
 kprect <- args[4]
 processed <- args[5]
 sample_handle <- args[6]
+svlabel_handle<- args[7]
 
 library(karyoploteR)
 
+read_file_or_warn <- function(filepath) {
+  if (file.info(filepath)$size == 1) {
+    warning("The file is empty!")
+    return(NULL)
+  } else {
+    return(read.table(filepath, sep='\t', header=T))
+  }
+}
 
 custom.cytobands <- toGRanges(cyto)
 custom.genome <- toGRanges(genome)
-orientation_frame = read.table(orientation, sep='\t', header=T)
+orientation_frame = read_file_or_warn(orientation)
 kprect_frame = read.table(kprect, sep='\t', header=T)
+svlabel_frame = read_file_or_warn(svlabel_handle)
 
 
 mapColors <- function(
@@ -114,10 +124,25 @@ get_coords <- function(
 plot_orientation <- function(
    sub_orientation, path, kp
 ){
-   x0 = as.numeric(sub_orientation[2])
-   x1 = as.numeric(sub_orientation[3])
-   col = sub_orientation[20]
-   kpArrows(kp, chr=path, x0=x0, x1=x1, y0=0.5, y1=0.5, data.panel=2, lwd=1, angle=20, col=col, length=0.5)
+   # Check if sub_orientation is NULL
+   if (!is.null(sub_orientation)) {
+      x0 = as.numeric(sub_orientation[2])
+      x1 = as.numeric(sub_orientation[3])
+      col = sub_orientation[20]
+      kpArrows(kp, chr=path, x0=x0, x1=x1, y0=0.5, y1=0.5, data.panel=2, lwd=1, angle=20, col=col, length=0.5)
+   }
+}
+
+plot_svlabel <- function(
+   sub_svlabel, path, kp
+){
+   # Check if sub_orientation is NULL
+   if (!is.null(sub_svlabel)) {
+      print(sub_svlabel)
+      labels = sub_svlabel[15]
+      x = as.numeric(sub_svlabel[14])
+      kpPlotMarkers(kp, chr=path, x=x, y=0.25, labels=labels, data.panel=2, cex=1.15)
+   }
 }
 
 plot_ideogram <- function(
@@ -128,15 +153,22 @@ plot_ideogram <- function(
    kpAddBaseNumbers(kp)
    kpAddCytobandLabels(kp, force.all=TRUE, srt=90, col='#2C02FD', cex=0.5)
    apply(sub_kprect, 1, plot_kprects, path=path, color_mapper=color_mapper, kp=kp)
-   apply(sub_orientation, 1, plot_orientation, path=path, kp=kp)
+   if (!is.null(sub_orientation)){
+      apply(sub_orientation, 1, plot_orientation, path=path, kp=kp)
+   }
    dev.off()
 }
 
 plot_total_ideogram <- function(
-   path, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper, kp
+   path, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper, kp, sub_svlabel
 ){
    apply(sub_kprect, 1, plot_kprects, path=path, color_mapper=color_mapper, kp=kp)
-   apply(sub_orientation, 1, plot_orientation, path=path, kp=kp)
+   if (!is.null(sub_orientation)){
+      apply(sub_orientation, 1, plot_orientation, path=path, kp=kp)
+   }
+   if (!is.null(sub_svlabel)){
+      apply(sub_svlabel, 1, plot_svlabel, path=path, kp=kp)
+   }
 }
 
 chunk.2 <- function(x, n, force.number.of.groups = TRUE, len = length(x), groups = trunc(len/n), overflow = len%%n) { 
@@ -216,6 +248,7 @@ add_kp_labels <- function(karyoplot, chr.names=NULL, xoffset=0, yoffset=-30, ...
   y <- (bb$y0+bb$y1)/2 + yoffset
   for (name in names(x)) {
     if (grepl("dic|der|\\(t\\(", name)) {
+      #text(x = 0.05, y = y[[name]] +30, label = name, cex=5, srt=0, pos=4, col='black')
       text(x = 0.29, y = y[[name]], label = "*", cex=20, srt=90, pos=4, col='red')
     }
   invisible(karyoplot)
@@ -358,6 +391,175 @@ add_labels <- function(kp,cyto_first,pp) {
    plot_labels_by_chrom(chrom_coords)   
 }
 
+split_by_column <- function(data_frame, column_name) {
+  
+  # Check if data frame is NULL
+  if (is.null(data_frame)) {
+    warning("The data frame is NULL!")
+    return(NULL)
+  }
+  # Check if column exists in data frame
+  if (!column_name %in% names(data_frame)) {
+    warning(paste("Column", column_name, "not found in the data frame!"))
+    return(NULL)
+  }
+  # Perform the split operation
+  result <- split(data_frame, data_frame[[column_name]])
+  return(result)
+}
+
+get_subframe <- function(frame_list, index) {
+  # Check if the list is NULL or empty
+  if (is.null(frame_list) || length(frame_list) == 0) {
+    warning("The list is NULL or not populated!")
+    return(NULL)
+  }
+  # Check if the index is valid
+  if(!(i %in% names(frame_list))){
+    warning(paste("Index", index, "is out of bounds!"))
+    return(NULL)
+  }
+  # Return the subframe
+  subframe <- frame_list[index][[1]]
+  if (is.null(subframe) || nrow(subframe) == 0) {
+    warning("The subframe is NULL or empty!")
+    return(NULL)
+  }
+  return(subframe)
+}
+
+kpAddBaseNumbers <- function(karyoplot, tick.dist=20000000, tick.len=5, 
+                             units="auto", add.units=FALSE,
+                             digits=2, minor.ticks=TRUE, 
+                            minor.tick.dist=5000000, minor.tick.len=2,  cex=0.5, 
+                            tick.col=NULL, minor.tick.col=NULL, clipping=TRUE,  ...) {
+  
+  if(!methods::is(karyoplot, "KaryoPlot")) stop("'karyoplot' must be a valid 'KaryoPlot' object")
+  if(!(units %in% c("auto", "b", "kb", "Kb", "mb", "Mb"))) stop("invalid units. Must be one of: 'auto', 'b', 'Kb' or 'Mb'")
+  
+  karyoplot$beginKpPlot()
+  on.exit(karyoplot$endKpPlot())
+  
+  ccf <- karyoplot$coord.change.function
+  pp <- karyoplot$plot.params
+  mids <- karyoplot$ideogram.mid
+  
+  
+  toLabel <- function(n, units, add.units, digits) {
+    if(add.units==TRUE) {
+      unit.labels <- c("b", "Kb", "Mb")
+    } else {
+      unit.labels <- c("", "", "")
+    }
+    if(units == "auto") {
+      if(abs(n)<1000) { units <- "b"}
+      else if(abs(n)<1000000) {units <- "Kb"}
+      else {units <- "Mb"}
+    }
+    if(tolower(units) == "b") return(paste0(as.character(n), unit.labels[1])) #b
+    if(tolower(units) == "kb") return(paste0(as.character(round(n/1000, digits=digits)), unit.labels[2])) #Kb
+    return(paste0(as.character(round(n/1000000, digits=digits)), unit.labels[3])) #Mb
+  }
+  
+  old.scipen <- options("scipen")
+  options(scipen=999)
+  on.exit(options(scipen=old.scipen), add=TRUE)
+
+ 
+  #For every chromsome
+  chromosomes <- setdiff(kp$chromosomes,"SCALE")
+  for(chr.name in chromosomes) {
+
+    chr <- karyoplot$genome[chr.name]
+    #Major ticks
+    num.ticks <- width(chr)/tick.dist + 1
+  
+    tick.pos <- start(chr) + (tick.dist*(0:(num.ticks-1))) - 1 
+    tick.pos[1] <- start(chr)
+    
+    #if zoomed in, keep only the ticks in the plot region
+    if(karyoplot$zoom==TRUE) {
+      if(clipping==TRUE) {
+        tick.pos <- tick.pos[tick.pos >= start(karyoplot$plot.region) & tick.pos<= end(karyoplot$plot.region)]
+      }
+    }
+    
+    if(length(tick.pos)>0) {#We have to test here and cannot test on num.ticks to take the zooming into account
+      tick.labels <- sapply(tick.pos, toLabel, units=units, add.units=add.units, digits=digits)
+        #
+      #function(x){return(toLabel(x, units=units, add.units=add.units, digits=digits))}
+      
+      
+      xplot <- ccf(chr=rep(chr.name, length(tick.pos)), x=tick.pos, data.panel="ideogram")$x
+      y0plot <- mids(chr.name)-karyoplot$plot.params$ideogramheight/2
+      if(is.null(tick.col)) {
+        graphics::segments(x0=xplot, x1=xplot, y0=y0plot, y1=y0plot-tick.len, ...)
+      } else {
+        graphics::segments(x0=xplot, x1=xplot, y0=y0plot, y1=y0plot-tick.len, col=tick.col, ...)
+      }
+      graphics::text(x=xplot, y=y0plot-tick.len, labels=tick.labels, pos=1, cex=cex, offset=0.1, ...)
+    }
+    #Minor ticks
+    if(minor.ticks) {
+      if(width(chr)>minor.tick.dist) {
+        minor.num.ticks <- floor(width(chr)/minor.tick.dist)
+        minor.tick.pos <- start(chr) + (minor.tick.dist*(seq_len(minor.num.ticks))) - 1
+  
+        #if zoomed in, keep only the ticks in the plot region
+        if(karyoplot$zoom==TRUE) {
+          if(clipping==TRUE) {
+          minor.tick.pos <- minor.tick.pos[minor.tick.pos >= start(karyoplot$plot.region) & minor.tick.pos<= end(karyoplot$plot.region)]
+          }
+        }
+        if(length(minor.tick.pos)>0) { 
+          xplot <- ccf(chr=rep(chr.name, length(minor.tick.pos)), x=minor.tick.pos , data.panel="ideogram")$x
+          y0plot <- mids(chr.name) - karyoplot$plot.params$ideogramheight/2
+          if(is.null(minor.tick.col)) {
+            graphics::segments(x0=xplot, x1=xplot, y0=y0plot, y1=y0plot-minor.tick.len, ...)       
+          } else {
+            graphics::segments(x0=xplot, x1=xplot, y0=y0plot, y1=y0plot-minor.tick.len, col=minor.tick.col, ...)       
+          }
+        }
+      }
+    }
+  }
+  
+  invisible(karyoplot)
+}
+
+
+labelChromosomes <- function(kp, cex=1) {
+  
+  # Retrieve the r0 and r1 values for plotting area to position labels appropriately
+  r0 <- min(kp$ideogram$ylim)
+  r1 <- max(kp$ideogram$ylim)
+
+  # A buffer to shift labels down so they aren't too close to the chromosomes
+  y.buffer <- 0.02 * (r1 - r0)
+
+  # Iterate through the chromosomes
+  for(chrom in names(kp$chromosomes)) {
+    
+    # Check if there's a homologous pair
+    if(sum(kp$ideogram$chromosome == chrom) == 2) {
+      
+      # If yes, find mid-point between homologous pair to place the label
+      x.positions <- kp$ideogram$baseMid[kp$ideogram$chromosome == chrom]
+      x.mid <- mean(x.positions)
+      
+    } else {
+      
+      # If no pair, place label directly below the chromosome
+      x.mid <- kp$ideogram$baseMid[kp$ideogram$chromosome == chrom]
+      
+    }
+    
+    # Add the label to the plot
+    kpText(kp, x=x.mid, y=r0 - y.buffer, labels=chrom, cex=cex, r0=r0, r1=r1)
+  }
+}
+
+
 pp <- getDefaultPlotParams(plot.type=2)
 pp$leftmargin <- 0.3
 pp$data2height <- 30
@@ -365,23 +567,27 @@ pp$data2height <- 30
 color_mapper <- mapColors(unique(custom.cytobands$chrom))
 genome_split = split(custom.genome,custom.genome@seqnames)
 cytoband_split = split(custom.cytobands, custom.cytobands@seqnames)
-orientation_split = split(orientation_frame, orientation_frame$chr)
+# orientation_split = split(orientation_frame, orientation_frame$chr)
+orientation_split = split_by_column(orientation_frame, 'chr')
 kprect_split = split(kprect_frame, kprect_frame$chr)
-for(i in names(genome_split)){
-   path_handle = strsplit(i, " ")[[1]][1]
-   fig_out = paste(sample_handle, path_handle, '.pdf',sep='')
-   sub_cytoband <- custom.cytobands[custom.cytobands@seqnames==i]
-   sub_genome <- custom.genome[custom.genome@seqnames==i] 
-   sub_orientation = orientation_split[i][[1]]
-   sub_kprect = kprect_split[i][[1]]
-   plot_ideogram(i, fig_out, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper)
-}
+svlabel_split = split_by_column(svlabel_frame, 'chr')
+
+# for(i in names(genome_split)){
+#    path_handle = strsplit(i, " ")[[1]][1]
+#    fig_out = paste(sample_handle, path_handle, '.pdf',sep='')
+#    sub_cytoband <- custom.cytobands[custom.cytobands@seqnames==i]
+#    sub_genome <- custom.genome[custom.genome@seqnames==i] 
+#    # sub_orientation = orientation_split[i][[1]]
+#    sub_orientation = get_subframe(orientation_split, i)
+#    sub_kprect = kprect_split[i][[1]]
+#    plot_ideogram(i, fig_out, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper)
+# }
 
 ################
 pp <- getDefaultPlotParams(plot.type=2)
 pp$leftmargin <- 0.3
 pp$data2height <- 100
-pp$ideogramheight <- 150 
+pp$ideogramheight <- 80 
 pp$dataideogrammin <- -1
 pp$dataideogrammax <- 1
 pp$data2inmargin <- 20
@@ -406,6 +612,14 @@ custom.genome <- sort(custom.genome)
 seqlevels(custom.cytobands,) <- chrom_order
 levels(custom.genome@seqnames) <- chrom_order
 levels(custom.cytobands@seqnames) <- chrom_order
+custom.genome@seqinfo@seqlengths <- width(custom.genome)
+seqinfo_obj <- seqinfo(custom.genome)
+max_seqname <- seqnames(seqinfo_obj)[which.max(seqlengths(seqinfo_obj))]
+
+subset_gr_max <- custom.genome[seqnames(custom.genome) == max_seqname]
+seqlevels(subset_gr_max) <- seqlevelsInUse(subset_gr_max)
+gr_scaler <- GRanges(seqnames = c('SCALE'),ranges=subset_gr_max@ranges[1])
+
 
 contig_split <- round(length(chrom_order)/2)
 
@@ -457,130 +671,152 @@ seqlevels(cytoband_part19_Y) <- seqlevelsInUse(cytoband_part19_Y)
 levels(cytoband_part19_Y) <- seqlevels(cytoband_part19_Y)
 
 
+kpAddChromosomeNames <- function(karyoplot, chr.names=NULL, xoffset=0, yoffset=0, ...) {
+  
+  # Validate parameters
+  if(!methods::is(karyoplot, "KaryoPlot")) stop("'karyoplot' must be a valid 'KaryoPlot' object")
+  
+  if(is.null(chr.names)) {
+    chr.names <- karyoplot$chromosomes
+  }
 
-# ##### TEST to find center of chrom ####
-# # Function to calculate values and return a data frame
-# calculate_coordinate_space_all <- function(coord_frame, pp) {
-#       # Find unique values in the 'chrom' column
-#    unique_chrom_values <- unlist(as.list(as.character(coord_frame$chrom)))
-#    topmargin <- pp$topmargin
-#    bottommargin <- pp$bottommargin
-#    chrom_width <- calc_chrom_width(pp)
+  # Ensure "SCALE" is excluded
+  chr.names <- setdiff(chr.names, "SCALE")
 
-#    # Calculate the total number of entries in 'chrom'
-#    total_entries <- nrow(coord_frame)
+  if(length(chr.names)==0) stop("In kpAddChromosomeNames: chr.names must have at least one element.")
+  if(!all(methods::is(chr.names, "character"))) stop("In kpAddChromosomeNames: all elements of chr.names must be characters.")
 
-#       # Create an empty data frame to store the results
-#    result_df <- data.frame(chrom = character(),
-#                            yadj = numeric(),
-#                            max_x = numeric(),
-#                            stringsAsFactors = FALSE)
-
-#    # Iterate through each unique value in 'chrom'
-#    n_mult = length(unique_chrom_values)
-#    n_total = length(unique_chrom_values)
-#    total_width <- (chrom_width * n_total)
-#    total_plot <- topmargin + bottommargin + total_width
-#    off_set <- 0 
-#    max_x <- max(coord_frame$x) + .035
-#    for (i in 1:nrow(coord_frame)) {
-#       if(n_mult == n_total){
-#       top_offset = topmargin # accounts for the top margin in first calculation
-#       } else{
-#       top_offset = 0
-#       }
-#       # Calculate the number of occurrences of the current chrom value
-
-#       ind_chrom_width <- chrom_width
-#       middle_chrom_width <- ind_chrom_width/2
-      
-
-#       # Create a new row for the result data frame
-#       result_row <- data.frame(chrom = unique(coord_frame[i,]$chrom),
-#                               yadj = 1 - (middle_chrom_width + off_set)/total_plot,
-#                               max_x = max_x,
-#                               stringsAsFactors = FALSE)
-#       off_set = off_set + ind_chrom_width + top_offset
-
-#       # Add the result row to the result data frame
-#       result_df <- rbind(result_df, result_row)
-#    }
-
-#    return(result_df)
-# }
+  # Begin plotting
+  karyoplot$beginKpPlot()
+  on.exit(karyoplot$endKpPlot())
+  
+  bb <- getChromosomeNamesBoundingBox(karyoplot)
+  
+  x <- (bb$x0+bb$x1)/2 + xoffset
+  y <- (bb$y0+bb$y1)/2 + yoffset
+  
+  # Filter out the positions related to "SCALE" chromosome
+  x <- x[chr.names]
+  y <- y[chr.names]
+  
+  graphics::text(x=x, y=y, labels=chr.names, ...)
+  
+  invisible(karyoplot)
+}
 
 
 fig_out = paste(sample_handle, 'karyotype_split_1_of_4', '.pdf',sep='')
-pdf(fig_out, width=15,height=40,pointsize=1)
-genome_split = split(genome_part1_5,genome_part1_5@seqnames)
-kp <- plotKaryotype(chromosomes=levels(genome_part1_5@seqnames), genome=genome_part1_5, plot.type=2, cytobands=cytoband_part1_5, plot.params=pp, lwd=0.1, cex=3.5)
-# kpAddBaseNumbers(kp,cex=.8)
-kpAddBaseNumbers(kp, tick.dist = 10000000, tick.len = 10, tick.col="red", cex=1,
-                 minor.tick.dist = 1000000, minor.tick.len = 5, minor.tick.col = "gray")
-kpAddCytobandLabels(kp, srt=90, col='#2C02FD', cex=1.5, force.all=TRUE)
-for(i in names(genome_split)){
-   sub_cytoband <- cytoband_part1_5[cytoband_part1_5@seqnames==i]
-   sub_genome <- genome_part1_5[genome_part1_5@seqnames==i] 
-   sub_orientation = orientation_split[i][[1]]
+pdf(fig_out, width=20, height=40, pointsize=1)
+genome_split = split(genome_part1_5, genome_part1_5@seqnames)
+# Exclude the 'SCALE' chromosome using the zoom parameter
+visible_chromosomes <- setdiff(levels(genome_part1_5@seqnames), "SCALE")
+kp <- plotKaryotype(chromosomes = c(visible_chromosomes, 'SCALE'),
+                    genome = c(genome_part1_5, gr_scaler),
+                    plot.type = 2,
+                    cytobands = cytoband_part1_5,
+                    plot.params = pp,
+                    lwd = 0.1,
+                    cex = 3.5,
+                    labels.plotter=kpAddChromosomeNames)
+
+# Ensure other plotting functions only act on visible chromosomes
+for(i in visible_chromosomes) {
+   kpAddBaseNumbers(kp, tick.dist = 10000000, tick.len = 10, tick.col="red", cex=1, minor.tick.dist = 1000000, minor.tick.len = 5, minor.tick.col = "gray", chromosomes = i)
+   kpAddCytobandLabels(kp, srt=90, col='#2C02FD', cex=1.5, force.all=TRUE, chromosomes = i)
+   sub_cytoband <- cytoband_part1_5[cytoband_part1_5@seqnames == i]
+   sub_genome <- genome_part1_5[genome_part1_5@seqnames == i] 
+   sub_orientation = get_subframe(orientation_split, i)
    sub_kprect = kprect_split[i][[1]]
-   plot_total_ideogram(i, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper, kp)
+   sub_svlabel = get_subframe(svlabel_split, i)
+   plot_total_ideogram(i, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper, kp, sub_svlabel)
 }
 add_labels(kp, cyto_first, pp)
 add_kp_labels(kp)
 dev.off()
 
 fig_out = paste(sample_handle, 'karyotype_split_2_of_4', '.pdf',sep='')
-pdf(fig_out, width=15,height=40,pointsize=1)
-genome_split = split(genome_part6_12,genome_part6_12@seqnames)
-kp <- plotKaryotype(chromosomes=levels(genome_part6_12@seqnames), genome=genome_part6_12, plot.type=2, cytobands=cytoband_part6_12, plot.params=pp, lwd=0.1, cex=3.5)
-# kpAddBaseNumbers(kp,cex=.8)
-kpAddBaseNumbers(kp, tick.dist = 10000000, tick.len = 10, tick.col="red", cex=1,
-                 minor.tick.dist = 1000000, minor.tick.len = 5, minor.tick.col = "gray")
-kpAddCytobandLabels(kp, srt=90, col='#2C02FD', cex=1.5, force.all=TRUE)
-for(i in names(genome_split)){
-   sub_cytoband <- cytoband_part6_12[cytoband_part6_12@seqnames==i]
-   sub_genome <- genome_part6_12[genome_part6_12@seqnames==i] 
-   sub_orientation = orientation_split[i][[1]]
+pdf(fig_out, width=20, height=40, pointsize=1)
+genome_split = split(genome_part6_12, genome_part6_12@seqnames)
+# Exclude the 'SCALE' chromosome using the zoom parameter
+visible_chromosomes <- setdiff(levels(genome_part6_12@seqnames), "SCALE")
+kp <- plotKaryotype(chromosomes = c(visible_chromosomes, 'SCALE'),
+                    genome = c(genome_part6_12, gr_scaler),
+                    plot.type = 2,
+                    cytobands = cytoband_part6_12,
+                    plot.params = pp,
+                    lwd = 0.1,
+                    cex = 3.5,
+                    labels.plotter=kpAddChromosomeNames)
+
+# Ensure other plotting functions only act on visible chromosomes
+for(i in visible_chromosomes) {
+   kpAddBaseNumbers(kp, tick.dist = 10000000, tick.len = 10, tick.col="red", cex=1, minor.tick.dist = 1000000, minor.tick.len = 5, minor.tick.col = "gray", chromosomes = i)
+   kpAddCytobandLabels(kp, srt=90, col='#2C02FD', cex=1.5, force.all=TRUE, chromosomes = i)
+   sub_cytoband <- cytoband_part6_12[cytoband_part6_12@seqnames == i]
+   sub_genome <- genome_part6_12[genome_part6_12@seqnames == i] 
+   sub_orientation = get_subframe(orientation_split, i)
    sub_kprect = kprect_split[i][[1]]
-   plot_total_ideogram(i, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper, kp)
+   sub_svlabel = get_subframe(svlabel_split, i)
+   plot_total_ideogram(i, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper, kp, sub_svlabel)
 }
 add_labels(kp, cyto_first, pp)
 add_kp_labels(kp)
 dev.off()
 
 fig_out = paste(sample_handle, 'karyotype_split_3_of_4', '.pdf',sep='')
-pdf(fig_out, width=15,height=40,pointsize=1)
-genome_split = split(genome_part13_18,genome_part13_18@seqnames)
-kp <- plotKaryotype(chromosomes=levels(genome_part13_18@seqnames), genome=genome_part13_18, plot.type=2, cytobands=cytoband_part13_18, plot.params=pp, lwd=0.1, cex=3.5)
-# kpAddBaseNumbers(kp,cex=.8)
-kpAddBaseNumbers(kp, tick.dist = 10000000, tick.len = 10, tick.col="red", cex=1,
-                 minor.tick.dist = 1000000, minor.tick.len = 5, minor.tick.col = "gray")
-kpAddCytobandLabels(kp, srt=90, col='#2C02FD', cex=1.5, force.all=TRUE)
-for(i in names(genome_split)){
-   sub_cytoband <- cytoband_part13_18[cytoband_part13_18@seqnames==i]
-   sub_genome <- genome_part13_18[genome_part13_18@seqnames==i] 
-   sub_orientation = orientation_split[i][[1]]
+pdf(fig_out, width=20, height=40, pointsize=1)
+genome_split = split(genome_part13_18, genome_part13_18@seqnames)
+# Exclude the 'SCALE' chromosome using the zoom parameter
+visible_chromosomes <- setdiff(levels(genome_part13_18@seqnames), "SCALE")
+kp <- plotKaryotype(chromosomes = c(visible_chromosomes, 'SCALE'),
+                    genome = c(genome_part13_18, gr_scaler),
+                    plot.type = 2,
+                    cytobands = cytoband_part13_18,
+                    plot.params = pp,
+                    lwd = 0.1,
+                    cex = 3.5,
+                    labels.plotter=kpAddChromosomeNames)
+
+# Ensure other plotting functions only act on visible chromosomes
+for(i in visible_chromosomes) {
+   kpAddBaseNumbers(kp, tick.dist = 10000000, tick.len = 10, tick.col="red", cex=1, minor.tick.dist = 1000000, minor.tick.len = 5, minor.tick.col = "gray", chromosomes = i)
+   kpAddCytobandLabels(kp, srt=90, col='#2C02FD', cex=1.5, force.all=TRUE, chromosomes = i)
+   sub_cytoband <- cytoband_part13_18[cytoband_part13_18@seqnames == i]
+   sub_genome <- genome_part13_18[genome_part13_18@seqnames == i] 
+   sub_orientation = get_subframe(orientation_split, i)
    sub_kprect = kprect_split[i][[1]]
-   plot_total_ideogram(i, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper, kp)
+   sub_svlabel = get_subframe(svlabel_split, i)
+   plot_total_ideogram(i, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper, kp, sub_svlabel)
 }
 add_labels(kp, cyto_first, pp)
 add_kp_labels(kp)
 dev.off()
 
+
 fig_out = paste(sample_handle, 'karyotype_split_4_of_4', '.pdf',sep='')
-pdf(fig_out, width=15,height=40,pointsize=1)
-genome_split = split(genome_part19_Y,genome_part19_Y@seqnames)
-kp <- plotKaryotype(chromosomes=levels(genome_part19_Y@seqnames), genome=genome_part19_Y, plot.type=2, cytobands=cytoband_part19_Y, plot.params=pp, lwd=0.1, cex=3.5)
-# kpAddBaseNumbers(kp,cex=.8)
-kpAddBaseNumbers(kp, tick.dist = 10000000, tick.len = 10, tick.col="red", cex=1,
-                 minor.tick.dist = 1000000, minor.tick.len = 5, minor.tick.col = "gray")
-kpAddCytobandLabels(kp, srt=90, col='#2C02FD', cex=1.5, force.all=TRUE)
-for(i in names(genome_split)){
-   sub_cytoband <- cytoband_part19_Y[cytoband_part19_Y@seqnames==i]
-   sub_genome <- genome_part19_Y[genome_part19_Y@seqnames==i] 
-   sub_orientation = orientation_split[i][[1]]
+pdf(fig_out, width=20, height=40, pointsize=1)
+genome_split = split(genome_part19_Y, genome_part19_Y@seqnames)
+# Exclude the 'SCALE' chromosome using the zoom parameter
+visible_chromosomes <- setdiff(levels(genome_part19_Y@seqnames), "SCALE")
+kp <- plotKaryotype(chromosomes = c(visible_chromosomes, 'SCALE'),
+                    genome = c(genome_part19_Y, gr_scaler),
+                    plot.type = 2,
+                    cytobands = cytoband_part19_Y,
+                    plot.params = pp,
+                    lwd = 0.1,
+                    cex = 3.5,
+                    labels.plotter=kpAddChromosomeNames)
+
+# Ensure other plotting functions only act on visible chromosomes
+for(i in visible_chromosomes) {
+   kpAddBaseNumbers(kp, tick.dist = 10000000, tick.len = 10, tick.col="red", cex=1, minor.tick.dist = 1000000, minor.tick.len = 5, minor.tick.col = "gray", chromosomes = i)
+   kpAddCytobandLabels(kp, srt=90, col='#2C02FD', cex=1.5, force.all=TRUE, chromosomes = i)
+   sub_cytoband <- cytoband_part19_Y[cytoband_part19_Y@seqnames == i]
+   sub_genome <- genome_part19_Y[genome_part19_Y@seqnames == i] 
+   sub_orientation = get_subframe(orientation_split, i)
    sub_kprect = kprect_split[i][[1]]
-   plot_total_ideogram(i, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper, kp)
+   sub_svlabel = get_subframe(svlabel_split, i)
+   plot_total_ideogram(i, sub_genome, sub_cytoband, sub_orientation, sub_kprect, color_mapper, kp, sub_svlabel)
 }
 add_labels(kp, cyto_first, pp)
 add_kp_labels(kp)

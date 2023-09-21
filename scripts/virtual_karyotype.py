@@ -36,17 +36,14 @@ class Graph: #Class of graph
     def __init__(self):
         self.vertices = [] #list of Object of vertices
         self.edges = [] #list of edges. each edges is tuple of (u,v,M,type) u and v are vertices connected to each other M represent edge multiplicities and type can be "S", "SV", "R", "D"
-
     def print_node(self): #print all nodes
         for v in self.vertices:
             print(v.id, v.chromosome, v.pos, v.cn, v.type, v.edges)
-
     def return_node(self, id): # return node by id
         for v in self.vertices:
             if id == v.id:
                 return v
         return None
-
     def return_edges(self, a, b): #return all type of edge between two nodes. it return a list of edges or None
         ans = []
         for e in self.edges:
@@ -55,7 +52,6 @@ class Graph: #Class of graph
         if len(ans)>0:
             return ans
         return None
-
     def add_dummy_edges(self, u, v):#add dummy edges with type "D" between two nodes if already edge exist between them increase the CN 
         e = self.return_edges(u, v)
         print(e)
@@ -73,7 +69,6 @@ class Graph: #Class of graph
                 cn = e[2] + 1
                 self.edges.remove(e)
                 self.edges.append((e[0], e[1], cn, e[3]))
-
     def update_edges(self, a, b, count,e_type): #update an edge between node a nad b with type = e_type to the new number
         e_list = self.return_edges(a, b)
         for e in e_list:
@@ -81,7 +76,6 @@ class Graph: #Class of graph
                 self.edges.remove(e)
                 if count > 0:
                     self.edges.append((e[0], e[1], count, e[3]))
-
     def update_edges(self, a, b, count,e_type): #update an edge between node a nad b with type = e_type to the new number
         e_list = self.return_edges(a, b)
         for e in e_list:
@@ -570,7 +564,6 @@ def printEulerTour(component, component_edges, g): #Find Eulerian path/circuts i
     odd_vertices = []
     print('Component', component)
     print('Component edges', component_edges)
-
     segment_vertices = detect_segment_vertices(component, component_edges)
     odd_vertices = detect_segment_odd_degree(component, component_edges)
     print('ODD vertices', odd_vertices)
@@ -616,7 +609,6 @@ def printEulerTour(component, component_edges, g): #Find Eulerian path/circuts i
                 a = printEulerUtil(g2, odd_vertices[save_index], -1)
             else:
                 a = printEulerUtil(g2, odd_vertices[save_index+1], -1)   
-
     print(g2.edges)
     g2.print_node()
     print('Answer',a)
@@ -703,7 +695,6 @@ def convert_path_to_segment(p,g): # this is important function that convert Eule
                 direction = '-'
             temp = temp + str(seg_number)+direction+' '
         ans2.append(temp)
-
     return ans2
 
 def check_exiest_call(chromosome , start , end , type): # if we have a call like gain or loss  but in CNV it is filtered retrive it
@@ -786,8 +777,10 @@ def return_mapids(v,u,node_to_map_dict):
 
 def node_to_map(svs, xmap, g):
     node_to_map_dict = {}
+    node_to_smap_dict = {}
     for sv in svs:
         q_id = sv.q_id
+        smap_id = sv.smap_id
         n_type1, n_type2 = detect_sv_directions(sv, xmap)
         #a and b are two nodes that ara connected by sv edge
         a = find_nodes(sv.ref_c_id1, sv.ref_start, g.vertices, n_type1)
@@ -796,11 +789,16 @@ def node_to_map(svs, xmap, g):
         b = str(b)
         if a not in node_to_map_dict:
             node_to_map_dict[a] = []
+            node_to_smap_dict[a] = []
         node_to_map_dict[a].append(q_id)
+        node_to_smap_dict[a].append(smap_id)
         if b not in node_to_map_dict:
             node_to_map_dict[b] = []
+            node_to_smap_dict[b] = []
         node_to_map_dict[b].append(q_id)
-    return node_to_map_dict
+        node_to_smap_dict[b].append(smap_id)
+    return node_to_map_dict, node_to_smap_dict
+
 
 class ListNode:
     def __init__(self, x):
@@ -840,6 +838,83 @@ class Solution:
                 return False
         return True
 
+def smap_to_segment(pathnumber, smapids, smap):
+    """ Associates smap ids with pathnumber, pulls smap entries
+
+    Args:
+        pathnumber (_type_): _description_
+        smapids (_type_): _description_
+        smap (list): list of parsed smap entries from parsers.SmapEntry
+    """
+    all_ids = smapids.split('|')[0].split(',')
+    frame_list = []
+    if (len(all_ids) >=1) & (all_ids[0] != ''):
+        for smapid in all_ids:
+            smap_entry = find_in_smap(int(smapid),smap)
+            smap_frame = pd.DataFrame(columns=['smap_id','q_id','ref_c_id1','ref_c_id2','ref_start','ref_end','confidence','sv_type','size','VAF'],data=[[smapid, smap_entry.q_id, smap_entry.ref_c_id1, smap_entry.ref_c_id2, smap_entry.ref_start, smap_entry.ref_end, smap_entry.confidence, smap_entry.sv_type, smap_entry.size, smap_entry.VAF]],index=['Segment {}'.format(pathnumber)])
+            frame_list.append(smap_frame)
+    if len(frame_list)>0:
+        joined_frame_list = pd.concat(frame_list)
+    else:
+        joined_frame_list = None
+    return joined_frame_list
+
+
+def associate_segments_to_svs(paths,g,sv_tuples_set,node_to_smap_dict): # this is important function that convert Eulerion path with vertices ID to segment path. 
+    c = 1
+    segs_list = []
+    for p in paths:
+        component = list(set(p))
+        component_edges = return_all_edges_in_cc(component, g)
+        segment_vertices = detect_segment_vertices(component, component_edges)
+        ans = []
+        temp = [p[0]]
+        for i in range(1,len(p)-1):
+            if p[i] in segment_vertices and p[i-1]==p[i+1]:
+                temp.append(p[i])
+                if check_non_centromeric_path(temp):
+                    ans.append(temp)
+                temp = [p[i]]
+            else:
+                temp.append(p[i])
+        temp.append(p[-1])
+        if check_non_centromeric_path(temp):
+            ans.append(temp)
+        ans2 = []
+        for subpath in ans:
+            temp = ''
+            path = f"Path {c}"
+            print(path)
+            for i in range(0,len(subpath)-1,2):
+                seg_number = int((max(subpath[i],subpath[i+1])+1)/2)
+                try:
+                    print((subpath[i+1],subpath[i+2]))
+                    if (subpath[i],subpath[i+1]) in sv_tuples_set:
+                        smap_ids = return_mapids(str(subpath[i]),str(subpath[i+1]),node_to_smap_dict)
+                        segs_list.append([f"Segment {seg_number}", path, smap_ids])
+                    if (subpath[i+1],subpath[i+2]) in sv_tuples_set:
+                        smap_ids = return_mapids(str(subpath[i+1]),str(subpath[i+2]),node_to_smap_dict)
+                        segs_list.append([f"Segment {seg_number}", path, smap_ids])
+                except:
+                    continue
+            c += 1
+    return segs_list
+
+def find_sv_node_edges(svs, xmap, g):
+    tuples_list = []
+    for sv in svs:
+        q_id = sv.q_id
+        smap_id = sv.smap_id
+        n_type1, n_type2 = detect_sv_directions(sv, xmap)
+        #a and b are two nodes that ara connected by sv edge
+        a = find_nodes(sv.ref_c_id1, sv.ref_start, g.vertices, n_type1)
+        b = find_nodes(sv.ref_c_id2, sv.ref_end, g.vertices, n_type2)
+        tuples_list.append((a,b))
+        tuples_list.append((b,a))
+    sv_tuples_set = set(tuples_list)
+    return sv_tuples_set
+
+
 ######################################################################################################################################
 parser = argparse.ArgumentParser()
 parser.add_argument("-cnv", "--cnv", help="path to cnv call (cnv_call_exp.txt)", required=True)
@@ -850,7 +925,9 @@ parser.add_argument("-centro", "--centro", help="path to file contains centromer
 parser.add_argument("-cyto", "--cyto", help="path to file contains cytoband coordinates", required=False)
 parser.add_argument("-n", "--name", help="output name", required=True)
 parser.add_argument("-o", "--output", help="path to output dir", required=True)
+parser.add_argument("-sv", "--sv_output", help="path to output dir", required=True)
 args = parser.parse_args()
+sv_output = args.sv_output
 segments, all_seg = parse_cnvcall(args.cnv)
 smap = parse_smap(args.smap) 
 rcop, rcov = parse_rcmap(args.rcmap)
@@ -1112,17 +1189,20 @@ for component in connected_components:
         except:
             print('Unable to Parse path!')
             
-node_to_map_dict = node_to_map(svs, xmap, g)
+node_to_map_dict, node_to_smap_dict = node_to_map(svs, xmap, g)
 path_map = {}
+smap_frames = []
 with open(output , 'w') as f :
-    f.write('Segment\tNumber\tChromosome\tStart\tEnd\tStartNode\tEndNode\tMapIDs\n')
+    f.write('Segment\tNumber\tChromosome\tStart\tEnd\tStartNode\tEndNode\tMapIDs\tSmapIDs\n')
     number = 1
     for i in range(0,len(g.vertices),2):
         v = g.vertices[i]
         u = g.vertices[i+1]
         mapids = return_mapids(v.id,u.id,node_to_map_dict)
-        f.write('Segment\t{id}\t{chrom}\t{start}\t{end}\t{snode}\t{enode}\t{mapids}\n'.format(id = number, chrom = v.chromosome, start= v.pos, end= u.pos, snode = v.id, enode = u.id, mapids=mapids))
+        smapids = return_mapids(v.id,u.id,node_to_smap_dict)
+        f.write('Segment\t{id}\t{chrom}\t{start}\t{end}\t{snode}\t{enode}\t{mapids}\t{smapids}\n'.format(id = number, chrom = v.chromosome, start= v.pos, end= u.pos, snode = v.id, enode = u.id, mapids=mapids, smapids=smapids))
         p_n = str(number)
+        smap_frames.append(smap_to_segment(p_n, smapids, smap))
         if p_n not in path_map:
             path_map[p_n] = 'chr{}:{}-{}'.format(v.chromosome,v.pos,u.pos)
         number += 1
@@ -1137,7 +1217,21 @@ with open(output , 'w') as f :
             f.write('Path'+str(c)+ ' = '+iscn_coords+'\n')
             c+=1
 
-node_to_map_dict = node_to_map(svs, xmap, g)
+sv_tuples_set = find_sv_node_edges(svs, xmap, g)
+segs_list = associate_segments_to_svs(paths, g ,sv_tuples_set, node_to_smap_dict)
+subset = [x for x in smap_frames if isinstance(x,pd.DataFrame)]
+subset_smap_frame = pd.concat(subset)
+subset_smap_frame['Paths']= subset_smap_frame.apply(lambda x: [], axis=1)
+subset_smap_frame.index.name = 'Segments'
+subset_smap_frame.reset_index(inplace=True)
+
+for segment in segs_list:
+    matching_rows = subset_smap_frame[subset_smap_frame['Segments'] == segment[0]]
+    if not matching_rows.empty:
+        idx = matching_rows.index[0]
+        subset_smap_frame.at[idx,'Paths'].append(segment[1])
+
+node_to_map_dict,_ = node_to_map(svs, xmap, g)
 path_map = {}
 with open(iscn_output, 'w') as f :
     number = 1
@@ -1152,8 +1246,19 @@ with open(iscn_output, 'w') as f :
     c = 1
     for p in paths:
         check_path = Solution(p)
-        #if not check_path.palindrome():
         for structure in convert_path_to_segment(p,g):
+            print(structure.split())
+            split_structure = structure.split()
+            segments_list = ["Segment {}".format(x.replace('-','').replace('+','')) for x in split_structure]
+            path = f"Path {c}"
+            # for segment in segments_list:
+            #     matching_rows = subset_smap_frame[subset_smap_frame['Segments'] == segment]
+            #     if not matching_rows.empty:
+            #         idx = matching_rows.index[0]
+            #         # idx = subset_smap_frame[subset_smap_frame['Segments']==segment].index[0]
+            #         subset_smap_frame.at[idx,'Paths'].append(path)
             merged_coords,iscn_coords = convert_path(structure, path_map, cytoband_filtered)
             f.write('Path'+str(c)+ ' = '+iscn_coords+'\n')
             c+=1
+
+subset_smap_frame.to_csv(sv_output,index=False)
