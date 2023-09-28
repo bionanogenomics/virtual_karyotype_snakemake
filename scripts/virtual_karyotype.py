@@ -369,7 +369,7 @@ def estimating_edge_multiplicities_in_CC(component, g, xmap):
                     Lp_prob += cond <= e[0][2] # this is important line wich we apply copy number balance condition
                     if calculate_seg_length(e[0], g) > 50000: # for segment less than 50 Kbp no penalty applied for tuning segment CN
                         cn_tune += e[2]
-                    objective = objective + e[0][2] - e[0][1] #updating the Objective Function
+                    objective = objective + e[0][2] - e[1] #updating the Objective Function
         else:
             objective = objective + v_edges[0][0][2]
             if calculate_seg_length(v_edges[0][0], g) > 50000:# for segment less than 50 Kbp no penalty applied for tuning segment CN
@@ -378,7 +378,7 @@ def estimating_edge_multiplicities_in_CC(component, g, xmap):
     # print('obj', objective)
     # print('Sv_sum', sv_sum)
     # objective = 10 * objective  - 9 * sv_sum + 15 * cn_tune
-    objective = 2 * objective  - 1 * sv_sum + 4 * cn_tune
+    objective = 20 * objective  - 1 * sv_sum + 4 * cn_tune
     # print('obj', objective)
     Lp_prob += objective
     print(Lp_prob)

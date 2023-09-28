@@ -248,12 +248,12 @@ add_kp_labels <- function(karyoplot, chr.names=NULL, xoffset=0, yoffset=-30, ...
   y <- (bb$y0+bb$y1)/2 + yoffset
   for (name in names(x)) {
     if (grepl("dic|der|\\(t\\(", name)) {
-      #text(x = 0.05, y = y[[name]] +30, label = name, cex=5, srt=0, pos=4, col='black')
       text(x = 0.29, y = y[[name]], label = "*", cex=20, srt=90, pos=4, col='red')
     }
   invisible(karyoplot)
   }
 }
+
 
 
 # Function to calculate descending values from 1.0 (exclusive) based on the number of unique entries in 'chrom'
@@ -318,6 +318,15 @@ group_continuous <- function(df, group_column) {
   return(split_df)
 }
 
+
+second_largest <- function(coord_frame) {
+    # Sort the 'x' column in descending order
+    sorted_values <- sort(coord_frame$x, decreasing = TRUE)
+  
+    # Return the second value from the sorted list
+    return(sorted_values[2])
+}
+
 # Function to calculate values and return a data frame
 calculate_coordinate_space <- function(coord_frame, pp) {
       # Find unique values in the 'chrom' column
@@ -342,7 +351,7 @@ calculate_coordinate_space <- function(coord_frame, pp) {
    total_plot <- topmargin + bottommargin + total_width
    off_set <- 0 
    split_frames <- group_continuous(df=coord_frame,group_column='chrom')
-   max_x <- max(coord_frame$x) + .035
+   max_x <- second_largest(coord_frame) + .035
    for (frame in split_frames) {
       if(n_mult == n_total){
       top_offset = topmargin # accounts for the top margin in first calculation
@@ -559,6 +568,45 @@ labelChromosomes <- function(kp, cex=1) {
   }
 }
 
+extract_acen <- function(df) {
+  # Filter rows where gieStain equals 'acen'
+  filtered_df <- df[df$gieStain == 'acen', c('seqnames', 'chrom')]
+  
+  # For each unique seqnames, select the first chrom
+  selected_rows <- !duplicated(filtered_df$seqnames)
+  unique_filtered_df <- filtered_df[selected_rows, ]
+  
+  # Setting row names
+  rownames(unique_filtered_df) <- unique_filtered_df$seqnames
+  
+  return(unique_filtered_df)
+}
+
+add_sv_labels <- function(karyoplot, svlabel_frame, chr.names=NULL, xoffset=0, yoffset=-30, ...) {
+  #Validate parameters
+  if(!methods::is(karyoplot, "KaryoPlot")) stop("'karyoplot' must be a valid 'KaryoPlot' object")
+  
+  # If svlabel_frame is NULL, don't do anything further
+  if(is.null(svlabel_frame)) {
+    return(invisible(NULL))
+  }
+
+  if(is.null(chr.names)) chr.names <- karyoplot$chromosomes
+  if(length(chr.names)==0) stop("In kpAddChromosomeNames: chr.names must have at least one element.")
+  if(!all(methods::is(chr.names, "character"))) stop("In kpAddChromosomeNames: all elements of chr.names must be characters.")
+  #Begin plotting
+  karyoplot$beginKpPlot()
+  on.exit(karyoplot$endKpPlot())
+  bb <- getChromosomeNamesBoundingBox(karyoplot)  
+  x <- (bb$x0+bb$x1)/2 + xoffset
+  y <- (bb$y0+bb$y1)/2 + yoffset
+  for (name in names(x)) {
+    if (name %in% svlabel_frame$chr) {
+      text(x = 0.29, y = y[[name]], label = "*", cex=20, srt=90, pos=4, col='red')
+    }
+  invisible(karyoplot)
+  }
+}
 
 pp <- getDefaultPlotParams(plot.type=2)
 pp$leftmargin <- 0.3
@@ -633,8 +681,8 @@ seqlevels(cytoband_part_1) <- seqlevelsInUse(cytoband_part_1)
 levels(cytoband_part_1) <- seqlevels(cytoband_part_1)
 
 
-
-cyto_first <- get_first_rows_per_seqnames(sub_cyto)
+cyto_first = extract_acen(cyto)
+#cyto_first <- get_first_rows_per_seqnames(sub_cyto)
 
 part1_5 <- droplevels(unique(cyto_first[cyto_first$chrom %in% c(1,2,3,4,5),]$seqnames))
 part6_12 <- droplevels(unique(cyto_first[cyto_first$chrom %in% c(6,7,8,9,10,11,12),]$seqnames))
@@ -732,6 +780,7 @@ for(i in visible_chromosomes) {
 }
 add_labels(kp, cyto_first, pp)
 add_kp_labels(kp)
+add_sv_labels(kp, svlabel_frame)
 dev.off()
 
 fig_out = paste(sample_handle, 'karyotype_split_2_of_4', '.pdf',sep='')
@@ -761,6 +810,7 @@ for(i in visible_chromosomes) {
 }
 add_labels(kp, cyto_first, pp)
 add_kp_labels(kp)
+add_sv_labels(kp, svlabel_frame)
 dev.off()
 
 fig_out = paste(sample_handle, 'karyotype_split_3_of_4', '.pdf',sep='')
@@ -790,6 +840,7 @@ for(i in visible_chromosomes) {
 }
 add_labels(kp, cyto_first, pp)
 add_kp_labels(kp)
+add_sv_labels(kp, svlabel_frame)
 dev.off()
 
 
@@ -820,6 +871,7 @@ for(i in visible_chromosomes) {
 }
 add_labels(kp, cyto_first, pp)
 add_kp_labels(kp)
+add_sv_labels(kp, svlabel_frame)
 dev.off()
 
 

@@ -94,7 +94,8 @@ def generate_karyoploter_plotting_params(resolved_cyto, segment_frame_filtered, 
     # contig_orientation_frame = generate_orientation_arrow_coordinates(resolved_cyto)
     # path_segments = extract_segments(vk_results) -> Deprecated
     svlabel_frame = generate_sv_label_frame(segment_frame_filtered, vk_results)
-    svlabel_frame_final = interset_labels_with_cyto(resolved_cyto,svlabel_frame)
+    svlabel_frame_final = get_matching_cyto_rows(svlabel_frame, resolved_cyto)
+    # svlabel_frame_final = interset_labels_with_cyto(resolved_cyto,svlabel_frame) # replace this function with get_matching_cyto_rows
     svlabel_frame_final.to_csv(svlabel_frame_out,sep="\t",index=False)
     # Tomorrow - review VK vertices to see if I can find adjacent nodes in graph created by SV, see line 1136 i.e node_to_map_dict, node_to_smap_dict = node_to_map(svs, xmap, g)
     # Also intersect svlabel_frame with resolved_cyto, and pass filtered frame to generate_inversion_orientation_arrow_coordinates
@@ -103,6 +104,44 @@ def generate_karyoploter_plotting_params(resolved_cyto, segment_frame_filtered, 
 
     contig_orientation_frame.to_csv(contig_orientation_out,sep='\t',index=False)
     kprect_frame.to_csv(kprect_out,sep='\t',index=False)
+
+
+####### Below is most current version of this code 
+
+
+def get_matching_cyto_rows(svlabel_frame, resolved_cyto):
+    result_rows = []
+    if not svlabel_frame.empty:
+        svlabel_frame.reset_index(drop=True,inplace=True)
+        resolved_cyto.reset_index(drop=True,inplace=True)
+        for _, sv_row in svlabel_frame.iterrows():
+            # First, let's filter out rows where the path matches.
+            matched_path = resolved_cyto[resolved_cyto['Path'] == sv_row['Paths']].sort_values(by='start').reset_index(drop=True)
+            matched = False
+            for idx, row in matched_path.iterrows():
+                # Check if ref_start falls between original_start and original_end
+                if row['original_start'] <= sv_row['ref_start'] <= row['original_end']:
+                    joined_row = pd.concat([sv_row, row.drop(['chr'])])
+                    result_rows.append(joined_row)
+                    matched = True
+                    break
+                # Check for rows where ref_start is directly between original_end and the subsequent row's original_start
+                elif idx != matched_path.index[-1]:  # Ensure it's not the last row
+                    next_row = matched_path.loc[idx + 1]
+                    if row['original_end'] <= sv_row['ref_start'] <= next_row['original_start']:
+                        joined_row = pd.concat([sv_row, row.drop(['chr'])])
+                        result_rows.append(joined_row)
+                        matched = True
+                        break
+    if result_rows:
+        svlabel_frame_final = pd.DataFrame(result_rows).reset_index(drop=True)
+        path_map = resolved_cyto.loc[:,['chr','Path']].set_index('Path').to_dict()['chr']
+        svlabel_frame_final['chr'] = svlabel_frame_final['Paths'].map(path_map)
+        svlabel_frame_final['pos'] = svlabel_frame_final['ref_start']
+        svlabel_frame_final['labels'] = svlabel_frame_final['sv_type'] + " - mapid: " + svlabel_frame_final['q_id'].astype(str)
+    else:
+        svlabel_frame_final = pd.DataFrame()  # Will need to add check in R to see if this is empty
+    return svlabel_frame_final
 
 def interset_labels_with_cyto(resolved_cyto,svlabel_frame):
     """
@@ -240,17 +279,20 @@ def generate_sv_label_frame(segment_frame_filtered, vk_results):
         segment_frame_filtered (_type_): _description_
         vk_results (_type_): _description_
     """
-    path_segment_frame = extract_segments(vk_results)
-    exploded_frame = segment_frame_filtered.explode('Paths')
-    exploded_frame['Paths'] =exploded_frame['Paths'].str.replace(' ','')
-    grouped_paths = path_segment_frame.groupby('Paths')
-    filtered = []
-    for path,path_frame in grouped_paths:
-        subset = exploded_frame[exploded_frame['Paths'] == path]
-        subset_final = subset[subset['Segments'].isin(path_frame['Segments'])]
-        filtered.append(subset_final)
-    filtered_segments = pd.concat(filtered)
-    size_filtered_segments = filter_dataframe(filtered_segments)
+    if not segment_frame_filtered.empty:
+        path_segment_frame = extract_segments(vk_results)
+        exploded_frame = segment_frame_filtered.explode('Paths')
+        exploded_frame['Paths'] =exploded_frame['Paths'].str.replace(' ','')
+        grouped_paths = path_segment_frame.groupby('Paths')
+        filtered = []
+        for path,path_frame in grouped_paths:
+            subset = exploded_frame[exploded_frame['Paths'] == path]
+            subset_final = subset[subset['Segments'].isin(path_frame['Segments'])]
+            filtered.append(subset_final)
+        filtered_segments = pd.concat(filtered)
+        size_filtered_segments = filter_dataframe(filtered_segments)
+    else:
+        size_filtered_segments = pd.DataFrame()
     return size_filtered_segments 
 
 def generate_inversion_orientation_arrow_coordinates(resolved_cyto, segment_frame_filtered):
@@ -266,21 +308,22 @@ def generate_inversion_orientation_arrow_coordinates(resolved_cyto, segment_fram
     collapsed_segments: DataFrame
         Orientation resolved collapsed_segments Dataframe
     """
-    inversion_frame = segment_frame_filtered[(segment_frame_filtered['sv_type']=='inversion') & (segment_frame_filtered['size']>=500000)].explode('Paths')
-    inversion_frame['Paths'] = inversion_frame['Paths'].str.replace(' ','')
     collapsed_segment_list = []
-    grouped_iscn = resolved_cyto.groupby('Path',sort=False)
-    for g,frame in grouped_iscn:
-        frame = frame.reset_index(drop=True)
-        indx_final = frame.index.max()
-        if g in inversion_frame['Paths'].values:
-            inversion_calls = inversion_frame[inversion_frame['Paths']==g]
-            for indx,row in inversion_calls.iterrows():
-                segment_start = frame.iloc[0].to_frame().T
-                segment_start['start'] = row.ref_start
-                segment_start['end'] = row.ref_end
-                segment_start['color'] = 'red'
-                collapsed_segment_list.append(segment_start)
+    if not segment_frame_filtered.empty:
+        inversion_frame = segment_frame_filtered[(segment_frame_filtered['sv_type']=='inversion') & (segment_frame_filtered['size']>=500000)].explode('Paths')
+        inversion_frame['Paths'] = inversion_frame['Paths'].str.replace(' ','')
+        grouped_iscn = resolved_cyto.groupby('Path',sort=False)
+        for g,frame in grouped_iscn:
+            frame = frame.reset_index(drop=True)
+            indx_final = frame.index.max()
+            if g in inversion_frame['Paths'].values:
+                inversion_calls = inversion_frame[inversion_frame['Paths']==g]
+                for indx,row in inversion_calls.iterrows():
+                    segment_start = frame.iloc[0].to_frame().T
+                    segment_start['start'] = row.ref_start
+                    segment_start['end'] = row.ref_end
+                    segment_start['color'] = 'red'
+                    collapsed_segment_list.append(segment_start)
     if collapsed_segment_list:
         collapsed_segments= pd.concat(collapsed_segment_list).sort_values(['Path','start','end'])
     else:
@@ -852,9 +895,13 @@ def parse_smap_segments(smap_segments):
             frame = frame.sort_values(['confidence','size'],ascending=[False,False])
             subset_frame = calculate_overlap_percentage_by_row(frame).iloc[:,:-2]
             consolidated_segments.append(subset_frame)
-    segment_frame = pd.concat(consolidated_segments).sort_values(['ref_c_id1'])
-    segment_frame_filtered = segment_frame.drop_duplicates(subset=['ref_c_id1','ref_c_id2','ref_start','ref_end','confidence','sv_type','size','VAF','Paths'])
-    segment_frame_filtered['Paths'] = segment_frame_filtered['Paths'].apply(ast.literal_eval)
+    if consolidated_segments:
+        segment_frame = pd.concat(consolidated_segments).sort_values(['ref_c_id1'])
+        segment_frame_filtered = segment_frame.drop_duplicates(subset=['ref_c_id1','ref_c_id2','ref_start','ref_end','confidence','sv_type','size','VAF','Paths'])
+        segment_frame_filtered['Paths'] = segment_frame_filtered['Paths'].apply(ast.literal_eval)
+    else:
+        segment_frame_filtered = pd.DataFrame()  # Will need to add check in R to see if this is empty
+
     return segment_frame_filtered
 
 def main():

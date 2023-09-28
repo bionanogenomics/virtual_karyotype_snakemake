@@ -78,7 +78,7 @@ rule generate_plotting_parameter_files:
         svlabel_frame_out = "vk_results/{sample}/{sample}_svlabel_frame.txt"
     shell:
         """
-        python scripts/format_results.py --iscn_format {input[0]} --smap_segments {input[1]} --vk_results {input[2]} --cytoband {params.cyto} --cytobands_out {output.cytoband_out} --genome_out {output.genome} --contig_orientation_out {output.orientation} --kprect_out {output.kprect} --svlabel_frame_out {output.svlabel_frame_out} &> {log}
+        python scripts/format_results.py --iscn_format {input[0]} --smap_segments {input[1]} --vk_results {input[2]} --cytoband {params.cyto} --cytobands_out {output.cytoband_out} --genome_out {output.genome} --contig_orientation_out {output.orientation} --kprect_out {output.kprect} --svlabel_frame_out {output.svlabel_frame_out} >> {log} 2>&1
         """
 
 rule visualize_virtual_karyotype:
