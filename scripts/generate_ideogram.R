@@ -139,7 +139,7 @@ plot_svlabel <- function(
    # Check if sub_orientation is NULL
    if (!is.null(sub_svlabel)) {
       print(sub_svlabel)
-      labels = sub_svlabel[15]
+      labels = sub_svlabel[33]
       x = as.numeric(sub_svlabel[14])
       kpPlotMarkers(kp, chr=path, x=x, y=0.25, labels=labels, data.panel=2, cex=1.15)
    }
