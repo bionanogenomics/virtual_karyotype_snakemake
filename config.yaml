@@ -59,3 +59,6 @@ downsample_bnx:
 
 refAligner:
   /home/jestabrook/repositories/Solve3.7_20221104_163244_27/RefAligner/12432.12642rel/RefAligner
+
+basedir:
+  /home/jestabrook/analyses/virtual_karyotype

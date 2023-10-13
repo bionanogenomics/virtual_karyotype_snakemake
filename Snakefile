@@ -28,10 +28,9 @@ rule all:
         expand("vk_results/{sample}/{sample}_results_ISCN.txt", sample=SAMPLES),
         expand("vk_results/{sample}/{sample}_custom_genome.txt", sample=SAMPLES),
         expand("vk_results/{sample}/{sample}_karyotype_rotated_split_4_of_4.pdf", sample=SAMPLES),
-        #expand("vk_results/{sample}/exp_refineFinal1_merged.xmap", sample=SAMPLES),
         expand("vk_results/{sample}/{sample}_karyotype_rotated_merged_image.pdf", sample=SAMPLES),
         expand("packaged_data/{sample}/exp_refineFinal1_merged.xmap",sample=SAMPLES),
-        "packaged_results/subset_postnatal_data_updated.tar.gz",
+        "packaged_results/packaged_vk_results.tar.gz",
 
 rule run_vk:
     input:
@@ -44,7 +43,7 @@ rule run_vk:
     params:
         out_dir = lambda w: "vk_results/{sample}".format(sample=w.sample),
         centro = config['centro'],
-        cyto = config['cytoband']
+        cyto = config['cytoband'],
     conda:
         "envs/vk_env.yaml"
     resources:
@@ -56,7 +55,7 @@ rule run_vk:
         "vk_results/{sample}/{sample}_smap_segments.txt",
     shell:
         """
-        python scripts/virtual_karyotype.py --cnv {input.cnv} --smap {input.smap} --rcmap {input.rcmap} --xmap {input.xmap} --centro {params.centro} --cyto {params.cyto} -n {wildcards.sample}_results -o {params.out_dir} --sv_output {output[3]} &> {log}
+        python scripts/run_virtual_karyotype.py --cnv {input.cnv} --smap {input.smap} --rcmap {input.rcmap} --xmap {input.xmap} --centro {params.centro} --cyto {params.cyto} -n {wildcards.sample}_results -o {params.out_dir} --sv_output {output[3]} &> {log}
         """
 
 rule generate_plotting_parameter_files:
@@ -169,13 +168,16 @@ rule copy_data:
 
 rule package_results:
     input:
-        "packaged_data/",
+        expand("packaged_data/{sample}/cnv_calls_exp.txt",sample=SAMPLES),
+        expand("packaged_data/{sample}/exp_refineFinal1_merged_filter_inversions.smap",sample=SAMPLES),
+        expand("packaged_data/{sample}/cnv_rcmap_exp.txt",sample=SAMPLES),
+        expand("packaged_data/{sample}/exp_refineFinal1_merged.xmap",sample=SAMPLES),
     log:
         "logs/scripts/package_results.log"
     output:
-        data_out="packaged_results/subset_postnatal_data_updated.tar.gz",
+        data_out="packaged_results/packaged_vk_results.tar.gz",
     shell:
         """
         mkdir -p packaged_results
-        tar -zcvf {output.data_out} {input}
+        tar -zcvf {output.data_out} packaged_data/
         """
