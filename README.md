@@ -58,15 +58,19 @@ git submodule update
 
 ## Parameters
 `centro`
+
 * Description: Path to the file containing information on centromeres for the human genome (version hg38).
 
 `cytoband`
+
 * Description: Path to the cytoband file. This file provides cytogenetic banding pattern information, which is essential for generating the virtual karyotype plots.
 
 `resolved_cytoband`
+
 * Description: Path to the updated cytoband file, which contains 800 band resolution and is formatted to include gieStain and base cytoband ids.
 
 `basedir`
+
 * Description: Base directory for the virtual karyotype analyses. This might be the directory where all the analysis outputs will be saved or where some primary resources are located.
 
 ### Generating Input Files for `run_vk`` Rule
