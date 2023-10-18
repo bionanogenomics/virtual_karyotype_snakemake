@@ -1,15 +1,6 @@
-###################################################
-# Molecule simulation workflow configuration file #
-###################################################
-
-reference_cmap:
-  /local/bioinformatics/reference/hg38/hg38_CTTAAG_0kb_0labels.cmap 
-
-bngomodel:
-  /home/jestabrook/repositories/svconfmodels/bin/bngomodel
-
-sim_params:
-  /home/jestabrook/analyses/simulation_workflow/scripts/sim_params.R
+#################################################
+# Virtual Karyotype workflow configuration file #
+#################################################
 
 centro:
   /home/jestabrook/analyses/simulation_workflow/resources/hg38_centro.txt
@@ -19,46 +10,6 @@ cytoband:
 
 resolved_cytoband:
   /home/jestabrook/analyses/virtual_karyotype_postnatal_subset/resources/hg38_800_cytoband_updated.tsv
-# /home/jestabrook/analyses/simulation_workflow/resources/hg38_400_level_cytoband_updated.tsv
-
-aws_access_key_id:
-  AKIA52DICWU3K52VN56N
-
-aws_secret_access_key:
-  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
-  
-aws_region:
-  us-east-1
-
-ref:
-  /home/users3/apang/human/reference/HG_build_20/dle_chrmerge/chrom_length_only.txt
-
-geo_hash:
-  /home/users3/apang/Pipeline/molecule_mapping/020918/geometric_hashing/trunk/cluster_ins_dup_del_inv_trans_geometric_hashing_minimal.pl
-
-n_cytobands:
-  2
-
-geometric_hash:
-  /home/users3/apang/Pipeline/molecule_mapping/020918/geometric_hashing/trunk/cluster_ins_dup_del_inv_trans_geometric_hashing_minimal.pl
-
-window:
-  1000000
-
-window_translocations:
-  10000000
-
-sunnyside:
-  sunnyside-bionanoaccess-com
-
-keyhole:
-  keyhole-bionanoaccess-com
-
-downsample_bnx:
-  /local/bioinformatics/common/simulation/scripts/downsample_bnx.sh
-
-refAligner:
-  /home/jestabrook/repositories/Solve3.7_20221104_163244_27/RefAligner/12432.12642rel/RefAligner
 
 basedir:
   /home/jestabrook/analyses/virtual_karyotype

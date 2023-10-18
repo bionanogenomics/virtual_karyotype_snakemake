@@ -1,7 +1,7 @@
 __author__ = "Joey Estabrook"
 __email__ = "jestabrook@bionano.com"
 
-"""Bionano - Molecule simulation workflow"""
+"""Bionano - Virtual Karyotype workflow"""
 
 import os 
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
@@ -13,15 +13,13 @@ configfile:"config.yaml"
 def message(mes):
     sys.stderr.write("|--- " + mes + "\n")
 
-dirs = ["scripts"]
+# dirs = ["scripts"]
 for dir in dirs:
     if not os.path.exists(os.path.join(os.getcwd(),'logs',dir)):
         log_out = os.path.join(os.getcwd(), 'logs', dir)
         os.makedirs(log_out)
 
 SAMPLES, = glob_wildcards('samples/{sample}/cnv_calls_exp.txt')
-
-print(SAMPLES)
 
 rule all:
     input:  
