@@ -15,7 +15,8 @@ from OMKar.main import (
     detect_receprical_translocation, check_non_centromeric_path,
     convert_path_to_segment, check_exiest_call, extend_segments_cn,
     average_values_greater_than_a, cn_in_mask_N_region, is_overlapping,
-    merge_segments_all_seg_smap
+    merge_segments_all_seg_smap, reverse_path, find_indices_with_sum_of_2,
+    share_same_segments, convert_segment_to_path, swap_segment, fix_dicentric
 )
 from collections import defaultdict
 from os.path import exists
@@ -314,7 +315,7 @@ def main():
     segments, all_seg = parse_cnvcall(args.cnv)
     sv_output = args.sv_output
     smap = parse_smap(args.smap)
-    segments = merge_segments_all_seg_smap(segments, all_seg, smap) # Need to debug this function
+    segments = merge_segments_all_seg_smap(segments, all_seg, smap, centro) # Need to debug this function
     segments.sort(key=lambda x: (int(x.chromosome), x.start))
     rcov, rcop = parse_rcmap(args.rcmap)
     chrY_cn = int(np.average(list(rcop['24'].values())) + 0.5)
@@ -329,7 +330,7 @@ def main():
     name = args.name
     cytoband_filtered = read_in_cyto(args.cyto)
     svs = []
-    segments = extend_segments_cn(segments) #fill the gap between calls. 
+    segments = extend_segments_cn(segments, all_seg) #fill the gap between calls. 
     for k in rcop.keys():
         seg_list = []
         label_list = list(rcop[k].keys())
@@ -354,23 +355,6 @@ def main():
                 new_seg.int_cn = chrY_cn
             new_seg.bp = [0, list(rcop[k].keys())[-1]]
             segments.append(new_seg)
-    segments, all_seg = parse_cnvcall(args.cnv)
-    smap = parse_smap(args.smap)
-    segments = merge_segments_all_seg_smap(segments, all_seg, smap) # Need to debug this function
-    segments.sort(key=lambda x: (int(x.chromosome), x.start))
-    rcov, rcop = parse_rcmap(args.rcmap)
-    chrY_cn = int(np.average(list(rcop['24'].values())) + 0.5)
-    # chrX_cn = 2
-    chrX_cn = round(np.average(list(rcop['23'].values())))
-    if chrY_cn > 0:
-        chrX_cn = 1
-    xmap = parse_xmap(args.xmap)
-    output = args.output+'/'+ args.name + '.txt'
-    file = args.output+'/'+ args.name + '.png'
-    file2 = args.output+'/'+ args.name + '_2.png'
-    name = args.name
-    svs = []
-    segments = extend_segments_cn(segments) #fill the gap between calls. 
     for k in rcop.keys():
         seg_list = []
         label_list = list(rcop[k].keys())
@@ -438,7 +422,7 @@ def main():
     # for s in segments:
     #     print('asli', s.chromosome, s.start, s.end, s.int_cn, sorted(s.bp))
     for i in smap:
-        # translocation applied filters. 
+        # translocation applied filters.
         if i.sv_type.startswith('trans') and i.confidence >= 0.05 and not i.sv_type.endswith(
                 'segdupe') and not i.sv_type.endswith('common') and not i.sv_type.endswith('oveerlap') and (i.ref_c_id1!= i.ref_c_id2 or abs(i.ref_end - i.ref_start) > 300000):
             svs.append(i)
@@ -461,11 +445,11 @@ def main():
                     svs.append(i)
                     print(i.line.strip())
         #if we have inversion SV
-        elif i.sv_type == 'inversion' and i.confidence >= 0.7: # filter low confidance 
+        elif i.sv_type == 'inversion' and i.confidence >= 0.7: # filter low confidance
             start, end = 0, 0
             dir = ''
             dir1, dir2 = detect_sv_directions(i, xmap)
-            s = find_in_smap(i.linkID, smap) #inversion has two rwo in smap file. we find them with Link ID 
+            s = find_in_smap(i.linkID, smap) #inversion has two rwo in smap file. we find them with Link ID
             if dir1 == 'H': #update inversion call. it is to complicated but baisically calculate inversion start and endpoint
                 dir = 'left'
                 start = s.ref_start
@@ -477,7 +461,7 @@ def main():
             start, end = min(start, end), max(start, end)
             i.ref_start = start
             i.ref_end = end
-            if abs(end - start) > 800000: #apply filter on size of inversion 
+            if abs(end - start) > 800000: #apply filter on size of inversion
                 svs.append(i)
                 print(i.line.strip(), start, end,dir)
                 print(s.line.strip())
@@ -494,14 +478,9 @@ def main():
                 i.ref_end = fold_point
                 svs.append(i)
                 print(i.line.strip())
-        elif i.sv_type == 'duplication':# or i.sv_type == 'duplication_split':
+        elif i.sv_type == 'duplication' or i.sv_type == 'duplication_split':
             if detect_del_dup_cn(i.ref_c_id1, i.ref_start, i.ref_end, segments)[0]:
                 _, i.ref_start, i.ref_end = detect_del_dup_cn(i.ref_c_id1, i.ref_start, i.ref_end, segments)
-                svs.append(i)
-                print(i.line.strip())
-        elif i.sv_type == 'duplication_split': #This maybe deleted, and get back to duplocation_split
-            # if detect_del_dup_cn(i.ref_c_id1, i.ref_start, i.ref_end)[0]:
-            #     _, i.ref_start, i.ref_end = detect_del_dup_cn(i.ref_c_id1, i.ref_start, i.ref_end)
                 svs.append(i)
                 print(i.line.strip())
         elif i.size > 500000 and not i.sv_type.startswith('inversion'): #Other type of SV
@@ -581,8 +560,13 @@ def main():
                 counter += 1
     for sv in svs:
         n_type1, n_type2 = detect_sv_directions(sv, xmap)
+        #a and b are two nodes that ara connected by sv edge
         a = find_nodes(sv.ref_c_id1, sv.ref_start, g.vertices, n_type1)
         b = find_nodes(sv.ref_c_id2, sv.ref_end, g.vertices, n_type2)
+        if int(sv.ref_c_id1) > int(sv.ref_c_id2) or (int(sv.ref_c_id1) == int(sv.ref_c_id2) and sv.ref_end < sv.ref_start):
+            a = find_nodes(sv.ref_c_id1, sv.ref_start, g.vertices, n_type2)
+            b = find_nodes(sv.ref_c_id2, sv.ref_end, g.vertices, n_type1)
+        # if sv.sv_type == 'inversion' or sv.sv_type == 'inversion_paired':
         if sv.sv_type == 'inversion_paired': #Lets complete the inversion
             if g.return_node(a).type == 'H':
                 new_edge = (a-1,b-1,0,'SV')
@@ -595,10 +579,18 @@ def main():
         if b == a and (a, b, 0, 'SV') not in g.edges: #it can be happend in duplication inversion
             g.edges.append((a, b, 0, 'SV'))
             g.return_node(a).append_edges(b)
+        #     print(sv.line)
+        #     print(a,b)
+        elif sv.sv_type.startswith('delet'): #telomere cite deletion prevent
+            if (a, b, 0, 'SV') not in g.edges and abs(a-b)!=1:
+                g.edges.append((a, b, 0, 'SV'))
+                g.return_node(a).append_edges(b)
+                g.return_node(b).append_edges(a)
         elif (a, b, 0, 'SV') not in g.edges:
             g.edges.append((a, b, 0, 'SV'))
             g.return_node(a).append_edges(b)
             g.return_node(b).append_edges(a)
+        # g.edges.append((b,a,0,'SV'))
     g.print_node()
     print(g.edges)
     Plot_graph(g,file,name,centro)
@@ -633,7 +625,13 @@ def main():
             number += 1
         c = 1
         for p in paths:
-            for structure in convert_path_to_segment(p,g):
+            print(p)
+            # structures, scores in convert_path_to_segment(p,g,centro)
+            structures, scores = convert_path_to_segment(p,g,centro)
+            print(structures)
+            for jj in range(len(structures)):
+            # for structure,scores in convert_path_to_segment(p,g,centro):
+                structure = structures[jj]
                 merged_coords,iscn_coords = convert_path(structure, path_map, cytoband_filtered)
                 f.write('Path'+str(c)+ ' = '+structure+'\n')
                 f.write('Path'+str(c)+ ' = '+merged_coords+'\n')
@@ -665,8 +663,10 @@ def main():
             number += 1
         c = 1
         for p in paths:
-            for structure in convert_path_to_segment(p,g):
-                print(structure.split())
+            structures,scores = convert_path_to_segment(p,g,centro)
+            # for structure,scores in convert_path_to_segment(p,g,centro):
+            for jj in range(len(structures)):
+                structure = structures[jj]
                 split_structure = structure.split()
                 segments_list = ["Segment {}".format(x.replace('-','').replace('+','')) for x in split_structure]
                 path = f"Path {c}"
