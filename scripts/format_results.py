@@ -777,6 +777,7 @@ def relabel_paths(resolved_strand_cyto):
     resolved_strand_iscn_sorted: DataFrame
         sorted by presence of cetromere and ordered by autosome, iscn relabled cytoband Dataframe
     """
+    chromosome_order = { '1': 0, '2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '9': 8, '10': 9, '11': 10, '12': 11, '13': 12, '14': 13, '15': 14, '16': 15, '17': 16, '18': 17, '19': 18, '20': 19, '21': 20, '22': 21, 'X': 22, 'Y': 23}
     iscn_cyto_copy = resolved_strand_cyto.copy()
     iscn_cyto_copy['chrom'] = iscn_cyto_copy['chrom'].replace({'23':'X','24':'Y'})
     cyto_list = []
@@ -784,7 +785,7 @@ def relabel_paths(resolved_strand_cyto):
     for g,frame in grouped_iscn:
         frame = frame.reset_index(drop=True)
         if frame['Updated_stain'].isin(['acen']).any():
-            centromere = frame[frame['Updated_stain'] == 'acen']['chrom'].unique()
+            centromere = frame[frame['Updated_stain'] == 'acen']['chrom'].unique().tolist()
             if len(centromere) == 1:
                 frame['centromere'] = 0
                 frame['sort_chrom'] = centromere[0]
@@ -797,12 +798,16 @@ def relabel_paths(resolved_strand_cyto):
             else:
                 if len(centromere) == 1:
                     non_centromere = list(set(contigs) - set(centromere))
-                    frame['iscn'] = "{path} : der({centromere})t({contig})".format(path=g,centromere=centromere[0],contig=';'.join(map(str,non_centromere)))
+                    sorted_list = sorted(contigs, key=lambda x: chromosome_order.get(x, len(chromosome_order)))
+                    test_print = "{path} : der({centromere})t({contig})".format(path=g,centromere=centromere[0],contig=';'.join(sorted_list))
+                    print(test_print)
+                    frame['iscn'] = "{path} : der({centromere})t({contig})".format(path=g,centromere=centromere[0],contig=';'.join(sorted_list))
                 else:
                     #Dicentric Chromosomes
                     non_centromere = list(set(contigs) - set(centromere))
+                    sorted_list = sorted(contigs, key=lambda x: chromosome_order.get(x, len(chromosome_order)))
                     if len(non_centromere) != 0:
-                        frame['iscn'] = "{path} : dic({centromere})t({contig})".format(path=g,centromere=';'.join(map(str,centromere)),contig=';'.join(map(str,non_centromere)))
+                        frame['iscn'] = "{path} : dic({centromere})t({contig})".format(path=g,centromere=';'.join(map(str,centromere)),contig=';'.join(map(str,sorted_list)))
                     else:
                         frame['iscn'] = "{path} : dic({centromere})".format(path=g,centromere=';'.join(map(str,centromere)))
             cyto_list.append(frame)
