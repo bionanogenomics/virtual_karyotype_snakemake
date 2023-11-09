@@ -129,7 +129,7 @@ plot_orientation <- function(
       x0 = as.numeric(sub_orientation[2])
       x1 = as.numeric(sub_orientation[3])
       col = sub_orientation[20]
-      kpArrows(kp, chr=path, x0=x0, x1=x1, y0=0.5, y1=0.5, data.panel=2, lwd=1, angle=20, col=col, length=0.5)
+      kpArrows(kp, chr=path, x0=x0, x1=x1, y0=0.5, y1=0.5, data.panel=2, lwd=1, angle=20, col=col, length=0.5, arrow.size=1)
    }
 }
 
@@ -140,8 +140,9 @@ plot_svlabel <- function(
    if (!is.null(sub_svlabel)) {
       print(sub_svlabel)
       labels = sub_svlabel[33]
+      labels <- gsub(' - ', '\n', labels)
       x = as.numeric(sub_svlabel[14])
-      kpPlotMarkers(kp, chr=path, x=x, y=0.25, labels=labels, data.panel=2, cex=1.15)
+      kpPlotMarkers(kp, chr=path, x=x, y=0.25, labels=labels, data.panel=2, cex=2)
    }
 }
 
@@ -769,7 +770,7 @@ kp <- plotKaryotype(chromosomes = c(visible_chromosomes, 'SCALE'),
 
 # Ensure other plotting functions only act on visible chromosomes
 for(i in visible_chromosomes) {
-   kpAddBaseNumbers(kp, tick.dist = 10000000, tick.len = 10, tick.col="red", cex=1, minor.tick.dist = 1000000, minor.tick.len = 5, minor.tick.col = "gray", chromosomes = i)
+   kpAddBaseNumbers(kp, tick.dist = 10000000, tick.len = 15, tick.col="red", cex=1.75, minor.tick.dist = 1000000, minor.tick.len = 5, minor.tick.col = "gray", chromosomes = i)
    kpAddCytobandLabels(kp, srt=90, col='deepskyblue', cex=1.5, force.all=TRUE, chromosomes = i)
    sub_cytoband <- cytoband_part1_5[cytoband_part1_5@seqnames == i]
    sub_genome <- genome_part1_5[genome_part1_5@seqnames == i] 
@@ -799,7 +800,7 @@ kp <- plotKaryotype(chromosomes = c(visible_chromosomes, 'SCALE'),
 
 # Ensure other plotting functions only act on visible chromosomes
 for(i in visible_chromosomes) {
-   kpAddBaseNumbers(kp, tick.dist = 10000000, tick.len = 10, tick.col="red", cex=1, minor.tick.dist = 1000000, minor.tick.len = 5, minor.tick.col = "gray", chromosomes = i)
+   kpAddBaseNumbers(kp, tick.dist = 10000000, tick.len = 15, tick.col="red", cex=1.75, minor.tick.dist = 1000000, minor.tick.len = 5, minor.tick.col = "gray", chromosomes = i)
    kpAddCytobandLabels(kp, srt=90, col='deepskyblue', cex=1.5, force.all=TRUE, chromosomes = i)
    sub_cytoband <- cytoband_part6_12[cytoband_part6_12@seqnames == i]
    sub_genome <- genome_part6_12[genome_part6_12@seqnames == i] 
@@ -829,7 +830,7 @@ kp <- plotKaryotype(chromosomes = c(visible_chromosomes, 'SCALE'),
 
 # Ensure other plotting functions only act on visible chromosomes
 for(i in visible_chromosomes) {
-   kpAddBaseNumbers(kp, tick.dist = 10000000, tick.len = 10, tick.col="red", cex=1, minor.tick.dist = 1000000, minor.tick.len = 5, minor.tick.col = "gray", chromosomes = i)
+   kpAddBaseNumbers(kp, tick.dist = 10000000, tick.len = 15, tick.col="red", cex=1.75, minor.tick.dist = 1000000, minor.tick.len = 5, minor.tick.col = "gray", chromosomes = i)
    kpAddCytobandLabels(kp, srt=90, col='deepskyblue', cex=1.5, force.all=TRUE, chromosomes = i)
    sub_cytoband <- cytoband_part13_18[cytoband_part13_18@seqnames == i]
    sub_genome <- genome_part13_18[genome_part13_18@seqnames == i] 
@@ -860,7 +861,7 @@ kp <- plotKaryotype(chromosomes = c(visible_chromosomes, 'SCALE'),
 
 # Ensure other plotting functions only act on visible chromosomes
 for(i in visible_chromosomes) {
-   kpAddBaseNumbers(kp, tick.dist = 10000000, tick.len = 10, tick.col="red", cex=1, minor.tick.dist = 1000000, minor.tick.len = 5, minor.tick.col = "gray", chromosomes = i)
+   kpAddBaseNumbers(kp, tick.dist = 10000000, tick.len = 15, tick.col="red", cex=1.75, minor.tick.dist = 1000000, minor.tick.len = 5, minor.tick.col = "gray", chromosomes = i)
    kpAddCytobandLabels(kp, srt=90, col='deepskyblue', cex=1.5, force.all=TRUE, chromosomes = i)
    sub_cytoband <- cytoband_part19_Y[cytoband_part19_Y@seqnames == i]
    sub_genome <- genome_part19_Y[genome_part19_Y@seqnames == i] 
