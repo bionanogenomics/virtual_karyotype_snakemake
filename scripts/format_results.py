@@ -703,6 +703,17 @@ def check_majority_rows(df, column_name, condition_value, end_row):
     count_q = subset[column_name].eq('q').sum()  # Count the number of 'q' values
     return count_q > count_p  
 
+def check_centromere(frame, status):
+    if frame['Resolved_stain'].str.contains('acen').any():
+        cent_chroms = frame[frame['Resolved_stain']=='acen']['chrom'].unique()
+        if len(cent_chroms) == 1:
+            if (frame.loc[:,['chrom']].iloc[0] != cent_chroms[0]).values[0] and (frame.loc[:,['chrom']].iloc[-1] == cent_chroms[0]).values[0] and (frame.loc[:,['arm']].iloc[-1] == 'p').values[0]:
+                update_status = True
+                if update_status != status:
+                    print("Resolving STATUS for path: {}".format(frame['chr'].unique()))
+                    status = update_status
+    return status
+
 def check_strand(frame):
     frame = frame.reset_index(drop=True)
     status = False
@@ -712,9 +723,10 @@ def check_strand(frame):
     if (len(frame['strand'].unique()) == 1) and (frame['strand'].unique()[0] == '+'):
         status = False
     else:
-        if 'acen' in frame['Resolved_stain']:
+        if frame['Resolved_stain'].str.contains('acen').any():
             end_row = frame.loc[frame['Resolved_stain']=='acen'].index.tolist()[0]
             status = check_majority_rows(frame, 'arm', 'p', end_row)
+            status = check_centromere(frame, status)
         else:
             end_row = int(frame.shape[0]/2)
             status = check_majority_rows(frame, 'arm', 'p', end_row)
