@@ -53,6 +53,8 @@ $ snakemake --help
 git clone https://joeyestabrook@bitbucket.org/bionanoclinicalaffairs/virtual_karyotype_snakemake.git
 git submodule init
 git submodule update
+cd OMKar 
+git pull origin master
 ```
 2. Modify the `config.yaml`: Specify the paths for the required resources (`centro`,`cytoband`,`resolved_cytoband`)
 
